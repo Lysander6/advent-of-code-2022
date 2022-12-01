@@ -29,18 +29,18 @@ impl FromStr for Problem {
     }
 }
 
-fn find_max_sum(inventories: &[Vec<u64>]) -> u64 {
-    let mut max_sum = 0;
+fn sum_inventories(inventories: &[Vec<u64>]) -> Vec<u64> {
+    inventories
+        .iter()
+        .map(|inv| inv.iter().sum::<u64>())
+        .collect()
+}
 
-    for inventory in inventories {
-        let sum = inventory.iter().sum();
+fn find_top_n(inventories: &[Vec<u64>], num: usize) -> Vec<u64> {
+    let mut inventory_sums = sum_inventories(&inventories);
+    inventory_sums.sort();
 
-        if sum > max_sum {
-            max_sum = sum;
-        }
-    }
-
-    max_sum
+    inventory_sums.into_iter().rev().take(num).collect()
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -48,7 +48,10 @@ fn main() -> Result<(), anyhow::Error> {
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { elven_inventories } = input_string.parse()?;
 
-    println!("Part 1 solution: {}", find_max_sum(&elven_inventories));
+    let top_inventories = find_top_n(&elven_inventories, 3);
+
+    println!("Part 1 solution: {}", top_inventories[0]);
+    println!("Part 2 solution: {}", top_inventories.iter().sum::<u64>());
 
     Ok(())
 }
@@ -93,6 +96,13 @@ mod tests {
     fn test_find_max_sum() {
         let Problem { elven_inventories } = TEST_INPUT.parse().unwrap();
 
-        assert_eq!(find_max_sum(&elven_inventories), 24000)
+        assert_eq!(find_top_n(&elven_inventories, 1)[0], 24000)
+    }
+
+    #[test]
+    fn test_find_top_3_sum() {
+        let Problem { elven_inventories } = TEST_INPUT.parse().unwrap();
+
+        assert_eq!(find_top_n(&elven_inventories, 3).iter().sum::<u64>(), 45000)
     }
 }
