@@ -8,23 +8,24 @@ struct Problem {
     elven_inventories: Vec<Vec<u64>>,
 }
 
+fn parse_inventory(s: &str) -> Result<Vec<u64>, anyhow::Error> {
+    s.lines()
+        .map(|line| {
+            line.parse::<u64>()
+                .with_context(|| format!("couldn't parse u64 from line: {}", line))
+        })
+        .collect()
+}
+
 impl FromStr for Problem {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let elven_inventories = s
+        let elven_inventories: Vec<Vec<u64>> = s
             .split("\n\n")
-            .map(|elven_inventory_raw| {
-                elven_inventory_raw
-                    .lines()
-                    .map(|line| {
-                        line.parse::<u64>()
-                            .with_context(|| format!("couldn't parse u64 from line: {}", line))
-                            .unwrap()
-                    })
-                    .collect()
-            })
-            .collect();
+            .map(parse_inventory)
+            .collect::<Result<_, _>>()?;
+
         Ok(Self { elven_inventories })
     }
 }
@@ -44,7 +45,7 @@ fn find_top_n(inventories: &[Vec<u64>], num: usize) -> Vec<u64> {
 }
 
 fn main() -> Result<(), anyhow::Error> {
-    let input_file_path = get_arg(1, "pass path to input file as first argument");
+    let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { elven_inventories } = input_string.parse()?;
 
