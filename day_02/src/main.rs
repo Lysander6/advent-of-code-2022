@@ -84,15 +84,15 @@ fn score_game(opponent_shape: &Shape, player_shape: &Shape) -> u64 {
     use Shape::*;
 
     let outcome_score = match (player_shape, opponent_shape) {
-        (Rock, Rock) => 3,
         (Rock, Paper) => 0,
-        (Rock, Scissors) => 6,
-        (Paper, Rock) => 6,
-        (Paper, Paper) => 3,
         (Paper, Scissors) => 0,
         (Scissors, Rock) => 0,
-        (Scissors, Paper) => 6,
+        (Rock, Rock) => 3,
+        (Paper, Paper) => 3,
         (Scissors, Scissors) => 3,
+        (Rock, Scissors) => 6,
+        (Paper, Rock) => 6,
+        (Scissors, Paper) => 6,
     };
     let shape_score = player_shape.clone() as u64;
 
@@ -103,17 +103,20 @@ fn match_shape_to_expected_game_result(
     opponent_shape: &Shape,
     expected_game_result: &GameResult,
 ) -> Shape {
+    use GameResult::*;
+    use Shape::*;
+
     match expected_game_result {
-        GameResult::Lose => match opponent_shape {
-            Shape::Rock => Shape::Scissors,
-            Shape::Paper => Shape::Rock,
-            Shape::Scissors => Shape::Paper,
+        Lose => match opponent_shape {
+            Rock => Scissors,
+            Paper => Rock,
+            Scissors => Paper,
         },
-        GameResult::Draw => opponent_shape.clone(),
-        GameResult::Win => match opponent_shape {
-            Shape::Rock => Shape::Paper,
-            Shape::Paper => Shape::Scissors,
-            Shape::Scissors => Shape::Rock,
+        Draw => opponent_shape.clone(),
+        Win => match opponent_shape {
+            Rock => Paper,
+            Paper => Scissors,
+            Scissors => Rock,
         },
     }
 }
