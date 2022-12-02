@@ -47,16 +47,18 @@ impl FromStr for Problem {
 }
 
 fn score_game(opponent_shape: &Shape, player_shape: &Shape) -> u64 {
+    use Shape::*;
+
     let outcome_score = match (player_shape, opponent_shape) {
-        (Shape::Rock, Shape::Rock) => 3,
-        (Shape::Rock, Shape::Paper) => 0,
-        (Shape::Rock, Shape::Scissors) => 6,
-        (Shape::Paper, Shape::Rock) => 6,
-        (Shape::Paper, Shape::Paper) => 3,
-        (Shape::Paper, Shape::Scissors) => 0,
-        (Shape::Scissors, Shape::Rock) => 0,
-        (Shape::Scissors, Shape::Paper) => 6,
-        (Shape::Scissors, Shape::Scissors) => 3,
+        (Rock, Rock) => 3,
+        (Rock, Paper) => 0,
+        (Rock, Scissors) => 6,
+        (Paper, Rock) => 6,
+        (Paper, Paper) => 3,
+        (Paper, Scissors) => 0,
+        (Scissors, Rock) => 0,
+        (Scissors, Paper) => 6,
+        (Scissors, Scissors) => 3,
     };
     let shape_score = player_shape.clone() as u64;
 
@@ -70,7 +72,8 @@ fn main() -> Result<(), anyhow::Error> {
 
     let games_score: u64 = games
         .iter()
-        .map(|(opponent_shape, player_shape)| score_game(opponent_shape, player_shape)).sum();
+        .map(|(opponent_shape, player_shape)| score_game(opponent_shape, player_shape))
+        .sum();
 
     println!("Part 1 solution: {}", games_score);
 
@@ -80,22 +83,23 @@ fn main() -> Result<(), anyhow::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Shape::*;
 
     #[test]
     fn test_shape_from_string() {
-        assert_eq!("A".parse::<Shape>().unwrap(), Shape::Rock);
-        assert_eq!("B".parse::<Shape>().unwrap(), Shape::Paper);
-        assert_eq!("C".parse::<Shape>().unwrap(), Shape::Scissors);
-        assert_eq!("X".parse::<Shape>().unwrap(), Shape::Rock);
-        assert_eq!("Y".parse::<Shape>().unwrap(), Shape::Paper);
-        assert_eq!("Z".parse::<Shape>().unwrap(), Shape::Scissors);
+        assert_eq!("A".parse::<Shape>().unwrap(), Rock);
+        assert_eq!("B".parse::<Shape>().unwrap(), Paper);
+        assert_eq!("C".parse::<Shape>().unwrap(), Scissors);
+        assert_eq!("X".parse::<Shape>().unwrap(), Rock);
+        assert_eq!("Y".parse::<Shape>().unwrap(), Paper);
+        assert_eq!("Z".parse::<Shape>().unwrap(), Scissors);
     }
 
     #[test]
     fn test_score_game() {
-        assert_eq!(score_game(Shape::Rock, Shape::Paper), 8);
-        assert_eq!(score_game(Shape::Paper, Shape::Rock), 1);
-        assert_eq!(score_game(Shape::Scissors, Shape::Scissors), 6);
+        assert_eq!(score_game(&Rock, &Paper), 8);
+        assert_eq!(score_game(&Paper, &Rock), 1);
+        assert_eq!(score_game(&Scissors, &Scissors), 6);
     }
 
     const TEST_INPUT: &str = "\
@@ -109,11 +113,7 @@ C Z";
 
         assert_eq!(
             games,
-            vec![
-                (Shape::Rock, Shape::Paper),
-                (Shape::Paper, Shape::Rock),
-                (Shape::Scissors, Shape::Scissors),
-            ],
+            vec![(Rock, Paper), (Paper, Rock), (Scissors, Scissors)],
         )
     }
 }
