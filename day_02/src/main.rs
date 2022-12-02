@@ -3,6 +3,8 @@ use std::str::FromStr;
 use anyhow::{anyhow, bail, Context};
 use common::{get_arg, read_file_to_string};
 
+/// Abstract representation of input, to be later type-safely interpreted as
+/// either `Shape` or `GameResult`.
 #[derive(Clone, Debug, PartialEq)]
 enum Symbol {
     AX,
@@ -23,6 +25,8 @@ impl FromStr for Symbol {
     }
 }
 
+/// Possible Rock-Paper-Scissors game "moves" with explicit scoring values as
+/// described in the challenge.
 #[derive(Clone, Debug, PartialEq)]
 enum Shape {
     Rock = 1,
@@ -80,6 +84,8 @@ impl FromStr for Problem {
     }
 }
 
+/// Scores a game of Rock-Paper-Scissors, awarding points for both outcome of
+/// the game and `Shape` selected by the player.
 fn score_game(opponent_shape: &Shape, player_shape: &Shape) -> u64 {
     use Shape::*;
 
@@ -99,14 +105,16 @@ fn score_game(opponent_shape: &Shape, player_shape: &Shape) -> u64 {
     shape_score + outcome_score
 }
 
-fn match_shape_to_expected_game_result(
+/// Given opponent's `Shape` and desired `GameResult` returns `Shape` that, when
+/// chosen by the player, will satisfy that outcome.
+fn match_shape_to_desired_game_result(
     opponent_shape: &Shape,
-    expected_game_result: &GameResult,
+    desired_game_result: &GameResult,
 ) -> Shape {
     use GameResult::*;
     use Shape::*;
 
-    match expected_game_result {
+    match desired_game_result {
         Lose => match opponent_shape {
             Rock => Scissors,
             Paper => Rock,
@@ -126,6 +134,7 @@ fn main() -> Result<(), anyhow::Error> {
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { games } = input_string.parse()?;
 
+    // score games using straightforward interpretation of the input
     let games_score_pt1: u64 = games
         .clone()
         .into_iter()
@@ -134,15 +143,14 @@ fn main() -> Result<(), anyhow::Error> {
         })
         .sum();
 
+    // score games using alternate interpretation of the input, where second
+    // symbol of each pair is a desired game result
     let games_score_pt2: u64 = games
         .into_iter()
         .map(|(opponent_symbol, player_symbol)| {
             score_game(
                 &opponent_symbol.clone().into(),
-                &match_shape_to_expected_game_result(
-                    &opponent_symbol.into(),
-                    &player_symbol.into(),
-                ),
+                &match_shape_to_desired_game_result(&opponent_symbol.into(), &player_symbol.into()),
             )
         })
         .sum();
@@ -186,13 +194,13 @@ C Z";
     fn test_parse_problem() {
         let Problem { games } = TEST_INPUT.parse().unwrap();
 
-        assert_eq!(games, vec![(AX, BY), (BY, AX), (CZ, CZ)],)
+        assert_eq!(games, vec![(AX, BY), (BY, AX), (CZ, CZ)]);
     }
 
     #[test]
     fn test_match_shape_to_expected_game_result() {
-        assert_eq!(match_shape_to_expected_game_result(&Rock, &Draw), Rock);
-        assert_eq!(match_shape_to_expected_game_result(&Paper, &Lose), Rock);
-        assert_eq!(match_shape_to_expected_game_result(&Scissors, &Win), Rock);
+        assert_eq!(match_shape_to_desired_game_result(&Rock, &Draw), Rock);
+        assert_eq!(match_shape_to_desired_game_result(&Paper, &Lose), Rock);
+        assert_eq!(match_shape_to_desired_game_result(&Scissors, &Win), Rock);
     }
 }
