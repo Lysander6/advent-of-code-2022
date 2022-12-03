@@ -5,6 +5,14 @@
 1. Add `"day_NN"` to `members` array in [Cargo.toml](./Cargo.toml)
 2. Run `cargo new --bin day_NN` in repository root
 
+## Documentation
+
+To compile and display documentation run:
+
+```sh
+cargo doc --open
+```
+
 ## Day 1
 
 ```sh

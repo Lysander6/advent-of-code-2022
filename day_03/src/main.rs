@@ -10,13 +10,28 @@ fn char_to_priority(c: char) -> Result<usize, anyhow::Error> {
 }
 
 fn split_in_half(s: &str) -> (&str, &str) {
-    // assumes `s` of even length
     let half = s.len() / 2;
 
     (&s[0..half], &s[half..])
 }
 
+/// Returns priority label of item common between left and right compartments of
+/// rucksack.
+///
+/// Problem statement guarantees that there always will be only one such item,
+/// so we return as soon as we find it, and not even consider situation where we
+/// cannot.
+///
+/// As number of types of items is known beforehand, and it easily fits on
+/// stack, we use an Boolean array[^1] to represent set of types of items
+/// present in the first compartment, which then is used to find common element
+/// in the second compartment in linear time.
+///
+/// [^1]: We could go lower level with flipping bits in `u64` but there's really
+/// no need for that.
 fn find_common_item_type(rucksack_items: &str) -> Result<usize, anyhow::Error> {
+    // Array of size 53 gives indices between 0 and 52 inclusive. "Phantom" 0-th
+    // item does not matter, as it will never be marked as seen.
     let mut seen_items = [false; 53];
 
     let (left, right) = split_in_half(rucksack_items);
@@ -32,14 +47,22 @@ fn find_common_item_type(rucksack_items: &str) -> Result<usize, anyhow::Error> {
         }
     }
 
-    unreachable!("assuming every rucksack has common item type between compartments");
+    unreachable!("every rucksack has common item type between compartments");
 }
 
+/// Sums priority labels of items common between compartments of every rucksack
+/// in input.
+///
+/// Every item is "looked at" at most once, so overall run-time complexity is
+/// linear in regards to total number of items in inventories.
 fn sum_common_item_types(inventories_raw: &str) -> Result<usize, anyhow::Error> {
     let inventories = inventories_raw.lines();
     inventories.map(find_common_item_type).sum()
 }
 
+/// Returns priority label of item common between three rucksacks.
+///
+/// Shares properties of [`find_common_item_type()`].
 fn find_common_item_type_between_three_rucksacks(
     rucksack_a: &str,
     rucksack_b: &str,
@@ -54,9 +77,7 @@ fn find_common_item_type_between_three_rucksacks(
 
     for item_priority in rucksack_b.chars().map(char_to_priority) {
         let item_priority = item_priority?;
-        if seen_in_a[item_priority] {
-            seen_in_a_and_b[item_priority] = true;
-        }
+        seen_in_a_and_b[item_priority] = seen_in_a[item_priority];
     }
 
     for item_priority in rucksack_c.chars().map(char_to_priority) {
@@ -66,11 +87,14 @@ fn find_common_item_type_between_three_rucksacks(
         }
     }
 
-    unreachable!(
-        "assuming every three consecutive rucksacks have common item type shared between them"
-    );
+    unreachable!("every three consecutive rucksacks have common item type");
 }
 
+/// Sums priority labels of items common between every three consecutive
+/// rucksacks.
+///
+/// Every item is "looked at" at most once, so overall run-time complexity is
+/// linear in regards to total number of items in inventories.
 fn sum_group_badges(inventories_raw: &str) -> Result<usize, anyhow::Error> {
     inventories_raw
         .lines()
