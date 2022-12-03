@@ -16,10 +16,10 @@ fn split_in_half(s: &str) -> (&str, &str) {
     (&s[0..half], &s[half..])
 }
 
-fn find_common_item_type(runsack_items: &str) -> Result<usize, anyhow::Error> {
+fn find_common_item_type(rucksack_items: &str) -> Result<usize, anyhow::Error> {
     let mut seen_items = [false; 53];
 
-    let (left, right) = split_in_half(runsack_items);
+    let (left, right) = split_in_half(rucksack_items);
 
     for item_priority in left.chars().map(char_to_priority) {
         seen_items[item_priority?] = true;
