@@ -16,7 +16,7 @@ fn split_in_half(s: &str) -> (&str, &str) {
     (&s[0..half], &s[half..])
 }
 
-fn find_common_item(runsack_items: &str) -> Result<usize, anyhow::Error> {
+fn find_common_item_type(runsack_items: &str) -> Result<usize, anyhow::Error> {
     let mut seen_items = [false; 53];
 
     let (left, right) = split_in_half(runsack_items);
@@ -35,11 +35,18 @@ fn find_common_item(runsack_items: &str) -> Result<usize, anyhow::Error> {
     unreachable!("assuming every rucksack has common item between compartments");
 }
 
+fn sum_common_item_types(inventories_raw: &str) -> Result<usize, anyhow::Error> {
+    let inventories = inventories_raw.lines();
+    inventories.map(find_common_item_type).sum()
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
 
-    println!("Part 1 solution: {}", 0);
+    let part_1_solution = sum_common_item_types(&input_string)?;
+
+    println!("Part 1 solution: {}", part_1_solution);
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -73,15 +80,36 @@ mod tests {
 
     #[test]
     fn test_find_common_item() {
-        assert_eq!(find_common_item("vJrwpWtwJgWrhcsFMMfFFhFp").unwrap(), 16);
         assert_eq!(
-            find_common_item("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL").unwrap(),
+            find_common_item_type("vJrwpWtwJgWrhcsFMMfFFhFp").unwrap(),
+            16
+        );
+        assert_eq!(
+            find_common_item_type("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL").unwrap(),
             38
         );
-        assert_eq!(find_common_item("PmmdzqPrVvPwwTWBwg").unwrap(), 42);
+        assert_eq!(find_common_item_type("PmmdzqPrVvPwwTWBwg").unwrap(), 42);
         assert_eq!(
-            find_common_item("wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn").unwrap(),
+            find_common_item_type("wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn").unwrap(),
             22
         );
+        assert_eq!(find_common_item_type("ttgJtRGJQctTZtZT").unwrap(), 20);
+        assert_eq!(
+            find_common_item_type("CrZsJsPPZsGzwwsLwLmpwMDw").unwrap(),
+            19
+        );
+    }
+
+    const TEST_INPUT: &str = "\
+vJrwpWtwJgWrhcsFMMfFFhFp
+jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+PmmdzqPrVvPwwTWBwg
+wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+ttgJtRGJQctTZtZT
+CrZsJsPPZsGzwwsLwLmpwMDw";
+
+    #[test]
+    fn test_sum_common_item_types() {
+        assert_eq!(sum_common_item_types(&TEST_INPUT).unwrap(), 157);
     }
 }
