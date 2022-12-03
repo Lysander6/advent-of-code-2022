@@ -32,7 +32,7 @@ fn find_common_item_type(rucksack_items: &str) -> Result<usize, anyhow::Error> {
         }
     }
 
-    unreachable!("assuming every rucksack has common item between compartments");
+    unreachable!("assuming every rucksack has common item type between compartments");
 }
 
 fn sum_common_item_types(inventories_raw: &str) -> Result<usize, anyhow::Error> {
@@ -40,14 +40,58 @@ fn sum_common_item_types(inventories_raw: &str) -> Result<usize, anyhow::Error> 
     inventories.map(find_common_item_type).sum()
 }
 
+fn find_common_item_type_between_three_rucksacks(
+    rucksack_a: &str,
+    rucksack_b: &str,
+    rucksack_c: &str,
+) -> Result<usize, anyhow::Error> {
+    let mut seen_in_a = [false; 53];
+    let mut seen_in_a_and_b = [false; 53];
+
+    for item_priority in rucksack_a.chars().map(char_to_priority) {
+        seen_in_a[item_priority?] = true;
+    }
+
+    for item_priority in rucksack_b.chars().map(char_to_priority) {
+        let item_priority = item_priority?;
+        if seen_in_a[item_priority] {
+            seen_in_a_and_b[item_priority] = true;
+        }
+    }
+
+    for item_priority in rucksack_c.chars().map(char_to_priority) {
+        let item_priority = item_priority?;
+        if seen_in_a_and_b[item_priority] {
+            return Ok(item_priority);
+        }
+    }
+
+    unreachable!(
+        "assuming every three consecutive rucksacks have common item type shared between them"
+    );
+}
+
+fn sum_group_badges(inventories_raw: &str) -> Result<usize, anyhow::Error> {
+    inventories_raw
+        .lines()
+        .collect::<Vec<_>>()
+        .chunks_exact(3)
+        .map(|chunk| match chunk {
+            &[a, b, c] => find_common_item_type_between_three_rucksacks(a, b, c),
+            _ => unreachable!("`chunks_exact` gives exactly 3-item long slices"),
+        })
+        .sum()
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
 
     let part_1_solution = sum_common_item_types(&input_string)?;
+    let part_2_solution = sum_group_badges(&input_string)?;
 
     println!("Part 1 solution: {}", part_1_solution);
-    println!("Part 2 solution: {}", 0);
+    println!("Part 2 solution: {}", part_2_solution);
 
     Ok(())
 }
@@ -111,5 +155,32 @@ CrZsJsPPZsGzwwsLwLmpwMDw";
     #[test]
     fn test_sum_common_item_types() {
         assert_eq!(sum_common_item_types(&TEST_INPUT).unwrap(), 157);
+    }
+
+    #[test]
+    fn test_find_common_item_type_between_three_rucksacks() {
+        assert_eq!(
+            find_common_item_type_between_three_rucksacks(
+                "vJrwpWtwJgWrhcsFMMfFFhFp",
+                "jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL",
+                "PmmdzqPrVvPwwTWBwg"
+            )
+            .unwrap(),
+            18
+        );
+        assert_eq!(
+            find_common_item_type_between_three_rucksacks(
+                "wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn",
+                "ttgJtRGJQctTZtZT",
+                "CrZsJsPPZsGzwwsLwLmpwMDw"
+            )
+            .unwrap(),
+            52
+        );
+    }
+
+    #[test]
+    fn test_sum_group_badges() {
+        assert_eq!(sum_group_badges(&TEST_INPUT).unwrap(), 70);
     }
 }

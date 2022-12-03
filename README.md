@@ -16,3 +16,9 @@ cargo run -p day_01 -- ./day_01/input.txt
 ```sh
 cargo run -p day_02 -- ./day_02/input.txt
 ```
+
+## Day 3
+
+```sh
+cargo run -p day_03 -- ./day_03/input.txt
+```
