@@ -50,13 +50,32 @@ fn assignments_fully_overlap(assignment_pair: &AssignmentPair) -> bool {
 
 /// Checks if any range limit falls within limits of the other range (start- and
 /// end-points inclusive).
+///
+/// When ranges overlap, they do so in one of three ways:
+///
+/// ```text
+///     ↓¹
+/// ....A--B..
+/// ..C--D....
+///
+/// ..A--B....
+/// ....C--D..
+///     ↑₂
+///
+///    ↓³
+/// ...A--B...
+/// ...C--D...
+/// ```
+///
+/// Therefore, ranges overlap if at least one of the following is true: (1)
+/// start-point of the first range falls within second range, (2) start-point of
+/// the second range falls within first range. Third case folds into either
+/// first or second, when ranges are inclusive.
 fn assignments_partially_overlap(assignment_pair: &AssignmentPair) -> bool {
     let ([fst_start, fst_end], [snd_start, snd_end]) = assignment_pair;
 
-    (fst_start <= snd_start && snd_start <= fst_end)
-        || (fst_start <= snd_end && snd_end <= fst_end)
-        || (snd_start <= fst_start && fst_start <= snd_end)
-        || (snd_start <= fst_end && fst_end <= snd_end)
+    (snd_start <= fst_start && fst_start <= snd_end)
+        || (fst_start <= snd_start && snd_start <= fst_end)
 }
 
 fn count_fully_overlapping_assignments(assignment_pairs: &[AssignmentPair]) -> usize {
