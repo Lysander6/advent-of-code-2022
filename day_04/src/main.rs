@@ -46,10 +46,26 @@ fn assignments_fully_overlap(assignment_pair: &AssignmentPair) -> bool {
     (fst_start <= snd_start && snd_end <= fst_end) || (snd_start <= fst_start && fst_end <= snd_end)
 }
 
+fn assignments_partially_overlap(assignment_pair: &AssignmentPair) -> bool {
+    let ([fst_start, fst_end], [snd_start, snd_end]) = assignment_pair;
+
+    (fst_start <= snd_start && snd_start <= fst_end)
+        || (fst_start <= snd_end && snd_end <= fst_end)
+        || (snd_start <= fst_start && fst_start <= snd_end)
+        || (snd_start <= fst_end && fst_end <= snd_end)
+}
+
 fn count_fully_overlapping_assignments(assignment_pairs: &[AssignmentPair]) -> usize {
     assignment_pairs
         .iter()
         .filter(|a| assignments_fully_overlap(a))
+        .count()
+}
+
+fn count_partially_overlapping_assignments(assignment_pairs: &[AssignmentPair]) -> usize {
+    assignment_pairs
+        .iter()
+        .filter(|a| assignments_partially_overlap(a))
         .count()
 }
 
@@ -61,6 +77,10 @@ fn main() -> Result<(), anyhow::Error> {
     println!(
         "Part 1 solution: {}",
         count_fully_overlapping_assignments(&assignment_pairs)
+    );
+    println!(
+        "Part 2 solution: {}",
+        count_partially_overlapping_assignments(&assignment_pairs)
     );
 
     Ok(())
@@ -100,5 +120,12 @@ mod tests {
         let Problem { assignment_pairs } = TEST_INPUT.parse().unwrap();
 
         assert_eq!(count_fully_overlapping_assignments(&assignment_pairs), 2);
+    }
+
+    #[test]
+    fn test_count_partially_overlapping_assignments() {
+        let Problem { assignment_pairs } = TEST_INPUT.parse().unwrap();
+
+        assert_eq!(count_partially_overlapping_assignments(&assignment_pairs), 4);
     }
 }
