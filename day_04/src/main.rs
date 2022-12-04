@@ -40,12 +40,16 @@ impl FromStr for Problem {
     }
 }
 
+/// Checks if either range is fully contained in the other (start- and
+/// end-points inclusive).
 fn assignments_fully_overlap(assignment_pair: &AssignmentPair) -> bool {
     let ([fst_start, fst_end], [snd_start, snd_end]) = assignment_pair;
 
     (fst_start <= snd_start && snd_end <= fst_end) || (snd_start <= fst_start && fst_end <= snd_end)
 }
 
+/// Checks if any range limit falls within limits of the other range (start- and
+/// end-points inclusive).
 fn assignments_partially_overlap(assignment_pair: &AssignmentPair) -> bool {
     let ([fst_start, fst_end], [snd_start, snd_end]) = assignment_pair;
 
@@ -126,6 +130,9 @@ mod tests {
     fn test_count_partially_overlapping_assignments() {
         let Problem { assignment_pairs } = TEST_INPUT.parse().unwrap();
 
-        assert_eq!(count_partially_overlapping_assignments(&assignment_pairs), 4);
+        assert_eq!(
+            count_partially_overlapping_assignments(&assignment_pairs),
+            4
+        );
     }
 }
