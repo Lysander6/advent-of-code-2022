@@ -39,25 +39,37 @@ impl FromStr for Problem {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (stacks_raw, instructions_raw) = s
             .split_once("\n\n")
-            .ok_or_else(|| anyhow!("expected input divided by single empty line"))?;
+            .ok_or_else(|| anyhow!("expected input separated by single empty line"))?;
 
+        // Process stacks from the bottom-up
         let mut stacks_iter = stacks_raw.lines().rev();
 
+        // Use first (bottom-most) stacks description line (labels) to determine
+        // their count
         let stacks_count = stacks_iter
             .next()
             .ok_or_else(|| anyhow!("empty stacks description"))?
             .split_whitespace()
             .count();
 
-        let mut stacks = vec![vec![]; stacks_count + 1]; // NOTE: 0-th stack
+        // Allocate `stacks_count + 1` vectors to accommodate `stacks_count`
+        // 1-indexed stacks and a dummy 0-th stack, to not bother with
+        // re-indexing stacks. 0-th stack will simply never be touched when
+        // executing instructions, and is an issue only when reading tops of
+        // stacks to retrieve solution - a nuisance we can live with
+        let mut stacks = vec![vec![]; stacks_count + 1];
 
+        // Consider rest of stacks description input in (at most) 4-character
+        // long chunks. We will then encounter three kinds of input: (1) `[X] `
+        // - an item on stack, (2) `    ` - no item, (3) `[X]` - an item on
+        // stack in last column of input (note no space at the end), same as (1)
+        // for our purposes.
         for stack_line in stacks_iter {
-            for (stack_number, chunk) in
-                stack_line.chars().collect::<Vec<_>>().chunks(4).enumerate()
-            {
-                if let Some(c) = chunk.get(1) {
-                    if *c != ' ' {
-                        stacks[stack_number + 1].push(*c);
+            let chars = stack_line.chars().collect::<Vec<_>>();
+            for (stack_number, chunk) in chars.chunks(4).enumerate() {
+                if let Some(&c) = chunk.get(1) {
+                    if c != ' ' {
+                        stacks[stack_number + 1].push(c);
                     }
                 }
             }
@@ -66,8 +78,8 @@ impl FromStr for Problem {
         let instructions = instructions_raw
             .lines()
             .map(|l| {
-                l.parse::<Instruction>()
-                    .with_context(|| anyhow!("trying to parse Instruction from '{}'", l))
+                l.parse()
+                    .with_context(|| format!("parsing Instruction from '{}'", l))
             })
             .collect::<Result<_, _>>()?;
 
@@ -78,39 +90,51 @@ impl FromStr for Problem {
     }
 }
 
-fn run_instructions_on_stacks(
+/// Executes instructions on stacks using "single-item pick up" interpretation
+fn run_instructions_with_single_pick_up(
     stacks: &Vec<Vec<char>>,
     instructions: &Vec<Instruction>,
-) -> Vec<Vec<char>> {
+) -> Result<Vec<Vec<char>>, anyhow::Error> {
     let mut stacks = stacks.clone();
 
     for instruction in instructions {
-        let Instruction { num, from, to } = instruction;
+        let Instruction { num, from, to } = *instruction;
 
-        for _ in 0..*num {
-            let v = stacks[*from].pop().unwrap();
-            stacks[*to].push(v);
+        // Move items one by one. Once could re-use loop-less solution from
+        // [`run_instructions_with_multi_pick_up`], by just reversing the order
+        // of items returned by [`std::vec::Vec::drain`], but this way the
+        // intention is much clearer
+        for _ in 0..num {
+            let v = stacks[from]
+                .pop()
+                .ok_or_else(|| anyhow!("no items left on stack {}", from))?;
+            stacks[to].push(v);
         }
     }
 
-    stacks
+    Ok(stacks)
 }
 
-fn run_instructions_on_stacks_2(
+/// Executes instructions on stacks using "multi-item pick up" interpretation
+fn run_instructions_with_multi_pick_up(
     stacks: &Vec<Vec<char>>,
     instructions: &Vec<Instruction>,
-) -> Vec<Vec<char>> {
+) -> Result<Vec<Vec<char>>, anyhow::Error> {
     let mut stacks = stacks.clone();
 
     for instruction in instructions {
-        let Instruction { num, from, to } = instruction;
+        let Instruction { num, from, to } = *instruction;
 
-        let from_stack_len = stacks[*from].len();
-        let mut v = stacks[*from].drain((from_stack_len - num)..).collect();
-        stacks[*to].append(&mut v);
+        // move `num` items from the end of stack at once
+        let idx_to_pick_up_from = stacks[from]
+            .len()
+            .checked_sub(num)
+            .ok_or_else(|| anyhow!("stack {} has less than {} items left on it", from, num))?;
+        let mut v = stacks[from].drain(idx_to_pick_up_from..).collect();
+        stacks[to].append(&mut v);
     }
 
-    stacks
+    Ok(stacks)
 }
 
 fn read_tops_of_stacks(stacks: &Vec<Vec<char>>) -> String {
@@ -130,11 +154,19 @@ fn main() -> Result<(), anyhow::Error> {
 
     println!(
         "Part 1 solution: {}",
-        read_tops_of_stacks(&run_instructions_on_stacks(&stacks, &instructions)).trim()
+        read_tops_of_stacks(&run_instructions_with_single_pick_up(
+            &stacks,
+            &instructions
+        )?)
+        .trim()
     );
     println!(
         "Part 2 solution: {}",
-        read_tops_of_stacks(&run_instructions_on_stacks_2(&stacks, &instructions)).trim()
+        read_tops_of_stacks(&run_instructions_with_multi_pick_up(
+            &stacks,
+            &instructions
+        )?)
+        .trim()
     );
 
     Ok(())
@@ -193,13 +225,13 @@ move 1 from 1 to 2";
     }
 
     #[test]
-    fn test_run_instructions_on_stacks() {
+    fn test_run_instructions_with_single_pick_up() {
         let Problem {
             stacks,
             instructions,
         } = TEST_INPUT.parse().unwrap();
 
-        let stacks = run_instructions_on_stacks(&stacks, &instructions);
+        let stacks = run_instructions_with_single_pick_up(&stacks, &instructions).unwrap();
 
         assert_eq!(
             stacks,
@@ -208,13 +240,13 @@ move 1 from 1 to 2";
     }
 
     #[test]
-    fn test_run_instructions_on_stacks_2() {
+    fn test_run_instructions_with_multi_pick_up() {
         let Problem {
             stacks,
             instructions,
         } = TEST_INPUT.parse().unwrap();
 
-        let stacks = run_instructions_on_stacks_2(&stacks, &instructions);
+        let stacks = run_instructions_with_multi_pick_up(&stacks, &instructions).unwrap();
 
         assert_eq!(
             stacks,
