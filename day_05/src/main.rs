@@ -96,6 +96,23 @@ fn run_instructions_on_stacks(
     stacks
 }
 
+fn run_instructions_on_stacks_2(
+    stacks: &Vec<Vec<char>>,
+    instructions: &Vec<Instruction>,
+) -> Vec<Vec<char>> {
+    let mut stacks = stacks.clone();
+
+    for instruction in instructions {
+        let Instruction { num, from, to } = instruction;
+
+        let from_stack_len = stacks[*from].len();
+        let mut v = stacks[*from].drain((from_stack_len - num)..).collect();
+        stacks[*to].append(&mut v);
+    }
+
+    stacks
+}
+
 fn read_tops_of_stacks(stacks: &Vec<Vec<char>>) -> String {
     stacks
         .iter()
@@ -115,7 +132,10 @@ fn main() -> Result<(), anyhow::Error> {
         "Part 1 solution: {}",
         read_tops_of_stacks(&run_instructions_on_stacks(&stacks, &instructions)).trim()
     );
-    println!("Part 2 solution: {}", 0);
+    println!(
+        "Part 2 solution: {}",
+        read_tops_of_stacks(&run_instructions_on_stacks_2(&stacks, &instructions)).trim()
+    );
 
     Ok(())
 }
@@ -184,6 +204,21 @@ move 1 from 1 to 2";
         assert_eq!(
             stacks,
             vec![vec![], vec!['C'], vec!['M'], vec!['P', 'D', 'N', 'Z']]
+        );
+    }
+
+    #[test]
+    fn test_run_instructions_on_stacks_2() {
+        let Problem {
+            stacks,
+            instructions,
+        } = TEST_INPUT.parse().unwrap();
+
+        let stacks = run_instructions_on_stacks_2(&stacks, &instructions);
+
+        assert_eq!(
+            stacks,
+            vec![vec![], vec!['M'], vec!['C'], vec!['P', 'Z', 'N', 'D']]
         );
     }
 
