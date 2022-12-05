@@ -102,7 +102,7 @@ fn run_instructions_with_single_pick_up(
 
         // Move items one by one. Once could re-use loop-less solution from
         // [`run_instructions_with_multi_pick_up`], by just reversing the order
-        // of items returned by [`std::vec::Vec::drain`], but this way the
+        // of items returned by [`std::vec::Vec::split_off`], but this way the
         // intention is much clearer
         for _ in 0..num {
             let v = stacks[from]
@@ -130,7 +130,7 @@ fn run_instructions_with_multi_pick_up(
             .len()
             .checked_sub(num)
             .ok_or_else(|| anyhow!("stack {} has less than {} items left on it", from, num))?;
-        let mut v = stacks[from].drain(idx_to_pick_up_from..).collect();
+        let mut v = stacks[from].split_off(idx_to_pick_up_from);
         stacks[to].append(&mut v);
     }
 
