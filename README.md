@@ -1,9 +1,20 @@
 # Advent of Code 2022
 
+## Prerequisites
+
+- [`asdf` v0.10.2-7e7a1fa](https://asdf-vm.com/)
+
+## Setup
+
+```sh
+asdf install
+```
+
 ## Adding package for a new challenge
 
-1. Add `"day_NN"` to `members` array in [Cargo.toml](./Cargo.toml)
-2. Run `cargo new --bin day_NN` in repository root
+1. Run `cookiecutter .scaffold/day`
+2. Add `"day_NN"` to `members` array in [Cargo.toml](./Cargo.toml)
+3. Run `cargo check` to trigger `Cargo.lock` update
 
 ## Documentation
 
