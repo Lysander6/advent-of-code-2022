@@ -3,15 +3,24 @@ use std::collections::HashMap;
 use anyhow::Context;
 use common::{get_arg, read_file_to_string};
 
+const ROOT: &str = "";
+
+/// Constructs mapping of directory paths to their total sizes
 fn dir_walk(commands: &[&str]) -> HashMap<String, u64> {
+    // Current working directory
     let mut cwd: Vec<String> = vec![];
+    // Directories and their sizes
     let mut dirs: HashMap<String, u64> = HashMap::new();
 
     for &command in commands {
         if command.starts_with("$ cd") {
+            // We leverage the property of input that we only move up or down
+            // (out/in) by one directory and never jump around file-system
             match &command[5..] {
                 "/" => {
-                    cwd = vec!["".to_string()];
+                    // Represent root directory as empty string, so `dirs` map
+                    // keys take familiar form of `/some/nested/dir`
+                    cwd = vec![ROOT.to_string()];
                 }
                 ".." => {
                     cwd.pop();
@@ -21,13 +30,17 @@ fn dir_walk(commands: &[&str]) -> HashMap<String, u64> {
                 }
             }
         } else if command.starts_with("$ ls") || command.starts_with("dir") {
+            // No-op
             continue;
         } else {
+            // Size & file name
             let (size, _file_name) = command.split_once(' ').unwrap();
             let size = size.parse::<u64>().unwrap();
 
-            // update totals up the tree
+            // Update totals up the tree
             for i in 0..cwd.len() {
+                // Inefficient but keeps solution clearer (could be done once
+                // per `ls`)
                 let key = cwd[0..=i].join("/").to_string();
 
                 dirs.entry(key).and_modify(|a| *a += size).or_insert(size);
@@ -46,7 +59,7 @@ fn sum_sizes_of_small_directories(dirs: &HashMap<String, u64>) -> u64 {
 
 fn find_smallest_directory_that_frees_up_enough_space(dirs: &HashMap<String, u64>) -> u64 {
     let total_disk_space = 70000000;
-    let current_free_space = total_disk_space - dirs[""];
+    let current_free_space = total_disk_space - dirs[ROOT];
     let space_needed_to_be_freed = 30000000 - current_free_space;
 
     let mut sizes = dirs
