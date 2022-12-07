@@ -44,6 +44,27 @@ fn sum_sizes_of_small_directories(dirs: &HashMap<String, u64>) -> u64 {
         .sum()
 }
 
+fn find_smallest_directory_that_frees_up_enough_space(dirs: &HashMap<String, u64>) -> u64 {
+    let total_disk_space = 70000000;
+    let current_free_space = total_disk_space - dirs[""];
+    let space_needed_to_be_freed = 30000000 - current_free_space;
+
+    let mut sizes = dirs
+        .iter()
+        .filter_map(|(_, &size)| {
+            if size >= space_needed_to_be_freed {
+                Some(size)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    sizes.sort();
+
+    sizes[0]
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -51,7 +72,10 @@ fn main() -> Result<(), anyhow::Error> {
     let dirs = dir_walk(&input_string.lines().collect::<Vec<_>>());
 
     println!("Part 1 solution: {}", sum_sizes_of_small_directories(&dirs));
-    println!("Part 2 solution: {}", 0);
+    println!(
+        "Part 2 solution: {}",
+        find_smallest_directory_that_frees_up_enough_space(&dirs)
+    );
 
     Ok(())
 }
@@ -106,5 +130,13 @@ $ ls
         let sum = sum_sizes_of_small_directories(&dirs);
 
         assert_eq!(sum, 95437);
+    }
+
+    #[test]
+    fn test_find_smallest_directory_that_frees_up_enough_space() {
+        let dirs = dir_walk(&TEST_INPUT.lines().collect::<Vec<_>>());
+        let size = find_smallest_directory_that_frees_up_enough_space(&dirs);
+
+        assert_eq!(size, 24933642);
     }
 }
