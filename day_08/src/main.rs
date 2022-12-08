@@ -88,7 +88,7 @@ fn visible_trees_map(trees: &Vec<Vec<u8>>) -> Vec<Vec<bool>> {
     for row in 0..rows_count {
         let mut latest_visible_tree_height = trees[row][0];
         visible_trees[row][0] = true;
-        for col in 0..columns_count {
+        for col in 1..columns_count {
             if latest_visible_tree_height < trees[row][col] {
                 visible_trees[row][col] = true;
                 latest_visible_tree_height = trees[row][col];
@@ -105,11 +105,7 @@ fn visible_trees_map(trees: &Vec<Vec<u8>>) -> Vec<Vec<bool>> {
 fn count_visible_trees(visible_trees: &Vec<Vec<bool>>) -> u64 {
     visible_trees
         .iter()
-        .map(|v| {
-            v.iter()
-                .filter_map(|&b| if b { Some(1) } else { None })
-                .sum::<u64>()
-        })
+        .map(|v| v.iter().filter(|&b| *b).count() as u64)
         .sum()
 }
 
@@ -168,8 +164,10 @@ fn compute_scenic_scores(trees: &Vec<Vec<u8>>) -> Vec<Vec<u64>> {
     let westward_viewing_distances = trees
         .iter()
         .cloned()
-        .map(|row| {
-            let mut scores = compute_viewing_distances(&row.into_iter().rev().collect::<Vec<_>>());
+        .map(|mut row| {
+            row.reverse();
+
+            let mut scores = compute_viewing_distances(&row);
             scores.reverse();
 
             scores
@@ -182,11 +180,11 @@ fn compute_scenic_scores(trees: &Vec<Vec<u8>>) -> Vec<Vec<u64>> {
         .collect::<Vec<_>>();
 
     let northward_viewing_distances = trees_transposed
-        .iter()
-        .cloned()
-        .map(|column| {
-            let mut scores =
-                compute_viewing_distances(&column.into_iter().rev().collect::<Vec<_>>());
+        .into_iter()
+        .map(|mut column| {
+            column.reverse();
+
+            let mut scores = compute_viewing_distances(&column);
             scores.reverse();
 
             scores
@@ -205,12 +203,8 @@ fn compute_scenic_scores(trees: &Vec<Vec<u8>>) -> Vec<Vec<u64>> {
     scenic_scores
 }
 
-fn find_max(a: &Vec<Vec<u64>>) -> u64 {
-    a.iter()
-        .map(|r| r.iter().max().unwrap())
-        .max()
-        .unwrap()
-        .clone()
+fn find_max(vv: &Vec<Vec<u64>>) -> Option<u64> {
+    vv.iter().filter_map(|v| v.iter().max()).max().copied()
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -223,7 +217,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     let scenic_scores = compute_scenic_scores(&trees);
 
-    println!("Part 2 solution: {}", find_max(&scenic_scores));
+    println!("Part 2 solution: {}", find_max(&scenic_scores).unwrap());
 
     Ok(())
 }
@@ -331,6 +325,6 @@ mod tests {
         assert_eq!(scores[1][2], 4);
         assert_eq!(scores[3][2], 8);
         assert_eq!(scores[4][3], 0);
-        assert_eq!(find_max(&scores), 8);
+        assert_eq!(find_max(&scores), Some(8));
     }
 }
