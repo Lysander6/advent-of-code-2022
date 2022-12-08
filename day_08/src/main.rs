@@ -206,7 +206,11 @@ fn compute_scenic_scores(trees: &Vec<Vec<u8>>) -> Vec<Vec<u64>> {
 }
 
 fn find_max(a: &Vec<Vec<u64>>) -> u64 {
-    a.iter().map(|r| r.iter().max().unwrap()).max().unwrap().clone()
+    a.iter()
+        .map(|r| r.iter().max().unwrap())
+        .max()
+        .unwrap()
+        .clone()
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -218,6 +222,7 @@ fn main() -> Result<(), anyhow::Error> {
     println!("Part 1 solution: {}", count_visible_trees(&visible_trees));
 
     let scenic_scores = compute_scenic_scores(&trees);
+
     println!("Part 2 solution: {}", find_max(&scenic_scores));
 
     Ok(())
