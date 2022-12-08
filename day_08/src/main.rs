@@ -113,6 +113,102 @@ fn count_visible_trees(visible_trees: &Vec<Vec<bool>>) -> u64 {
         .sum()
 }
 
+/// Computes viewing distance of each cell in the slice when looking towards its
+/// end (so from 0-th index to the end).
+///
+/// Note that function is blind to order in which `tree_line` was passed to it,
+/// so if you run it on reversed input you will get output in reversed order as
+/// well.
+///
+/// Assumes input map no larger than 256x256 (limit which could be easily
+/// increased by changing `u8` to some wider integer type).
+fn compute_viewing_distances(tree_line: &[u8]) -> Vec<u8> {
+    let mut scores: Vec<u8> = vec![0; tree_line.len()];
+
+    for i in 0..tree_line.len() {
+        for j in (i + 1)..tree_line.len() {
+            if tree_line[j] < tree_line[i] && j != (tree_line.len() - 1) {
+                continue;
+            }
+
+            // `j`-th tree is equal or taller than `i`-th, or is the last index
+            // of `tree_line`
+
+            scores[i] = (j - i) as u8;
+            break;
+        }
+    }
+
+    scores
+}
+
+fn compute_scenic_scores(trees: &Vec<Vec<u8>>) -> Vec<Vec<u64>> {
+    let rows_count = trees.len();
+    let columns_count = trees[0].len();
+
+    let trees_transposed: Vec<Vec<u8>> = (0..columns_count)
+        .map(|col| {
+            let mut column: Vec<u8> = vec![0; rows_count];
+            for row in 0..rows_count {
+                column[row] = trees[row][col];
+            }
+
+            column
+        })
+        .collect();
+
+    // Init with ones - multiplication neutral element
+    let mut scenic_scores: Vec<Vec<u64>> = vec![vec![1; columns_count]; rows_count];
+
+    let eastward_viewing_distances = trees
+        .iter()
+        .map(|row| compute_viewing_distances(row))
+        .collect::<Vec<_>>();
+
+    let westward_viewing_distances = trees
+        .iter()
+        .cloned()
+        .map(|row| {
+            let mut scores = compute_viewing_distances(&row.into_iter().rev().collect::<Vec<_>>());
+            scores.reverse();
+
+            scores
+        })
+        .collect::<Vec<_>>();
+
+    let southward_viewing_distances = trees_transposed
+        .iter()
+        .map(|column| compute_viewing_distances(&column))
+        .collect::<Vec<_>>();
+
+    let northward_viewing_distances = trees_transposed
+        .iter()
+        .cloned()
+        .map(|column| {
+            let mut scores =
+                compute_viewing_distances(&column.into_iter().rev().collect::<Vec<_>>());
+            scores.reverse();
+
+            scores
+        })
+        .collect::<Vec<_>>();
+
+    for i in 0..rows_count {
+        for j in 0..columns_count {
+            scenic_scores[i][j] *= eastward_viewing_distances[i][j] as u64;
+            scenic_scores[i][j] *= westward_viewing_distances[i][j] as u64;
+            scenic_scores[i][j] *= southward_viewing_distances[j][i] as u64;
+            scenic_scores[i][j] *= northward_viewing_distances[j][i] as u64;
+        }
+    }
+
+    scenic_scores
+}
+
+fn find_max(a: &Vec<Vec<u64>>) -> u64 {
+    a.iter().map(|r| r.iter().max().unwrap()).max().unwrap().clone()
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -120,7 +216,9 @@ fn main() -> Result<(), anyhow::Error> {
     let visible_trees = visible_trees_map(&trees);
 
     println!("Part 1 solution: {}", count_visible_trees(&visible_trees));
-    println!("Part 2 solution: {}", 0);
+
+    let scenic_scores = compute_scenic_scores(&trees);
+    println!("Part 2 solution: {}", find_max(&scenic_scores));
 
     Ok(())
 }
@@ -176,5 +274,58 @@ mod tests {
         let count = count_visible_trees(&visible_trees);
 
         assert_eq!(count, 21);
+    }
+
+    #[test]
+    fn test_compute_viewing_distances_1() {
+        let tree_row = vec![2, 5, 5, 1, 2];
+        let tree_col = vec![3, 5, 3, 5, 3];
+
+        let eastward_scores = compute_viewing_distances(&tree_row);
+        let mut westward_scores =
+            compute_viewing_distances(&tree_row.into_iter().rev().collect::<Vec<_>>());
+        westward_scores.reverse();
+
+        let soutward_scores = compute_viewing_distances(&tree_col);
+        let mut northward_scores =
+            compute_viewing_distances(&tree_col.into_iter().rev().collect::<Vec<_>>());
+        northward_scores.reverse();
+
+        assert_eq!(eastward_scores, vec![1, 1, 2, 1, 0]);
+        assert_eq!(westward_scores, vec![0, 1, 1, 1, 2]);
+        assert_eq!(soutward_scores, vec![1, 2, 1, 1, 0]);
+        assert_eq!(northward_scores, vec![0, 1, 1, 2, 1]);
+    }
+
+    #[test]
+    fn test_compute_viewing_distances_2() {
+        let tree_row = vec![3, 3, 5, 4, 9];
+        let tree_col = vec![3, 5, 3, 5, 3];
+
+        let eastward_scores = compute_viewing_distances(&tree_row);
+        let mut westward_scores =
+            compute_viewing_distances(&tree_row.into_iter().rev().collect::<Vec<_>>());
+        westward_scores.reverse();
+
+        let soutward_scores = compute_viewing_distances(&tree_col);
+        let mut northward_scores =
+            compute_viewing_distances(&tree_col.into_iter().rev().collect::<Vec<_>>());
+        northward_scores.reverse();
+
+        assert_eq!(eastward_scores, vec![1, 1, 2, 1, 0]);
+        assert_eq!(westward_scores, vec![0, 1, 2, 1, 4]);
+        assert_eq!(soutward_scores, vec![1, 2, 1, 1, 0]);
+        assert_eq!(northward_scores, vec![0, 1, 1, 2, 1]);
+    }
+
+    #[test]
+    fn test_compute_scenic_score() {
+        let Problem { trees } = TEST_INPUT.parse().unwrap();
+        let scores = compute_scenic_scores(&trees);
+
+        assert_eq!(scores[1][2], 4);
+        assert_eq!(scores[3][2], 8);
+        assert_eq!(scores[4][3], 0);
+        assert_eq!(find_max(&scores), 8);
     }
 }
