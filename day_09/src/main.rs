@@ -1,6 +1,6 @@
 use std::{collections::HashSet, str::FromStr};
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{bail, Context};
 use common::{get_arg, read_file_to_string};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -17,7 +17,7 @@ impl FromStr for Move {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (direction, magnitude) = s
             .split_once(' ')
-            .with_context(|| anyhow!("splitting '{}'", s))?;
+            .with_context(|| format!("splitting '{}'", s))?;
 
         let magnitude = magnitude.parse::<usize>()?;
 
