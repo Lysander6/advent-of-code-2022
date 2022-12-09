@@ -3,7 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use anyhow::{anyhow, bail, Context};
 use common::{get_arg, read_file_to_string};
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum Move {
     Left(usize),
     Right(usize),
@@ -88,6 +88,44 @@ fn simulate_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
     visited_positions
 }
 
+fn simulate_long_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
+    let mut rope = [[0, 0]; 10];
+    let mut visited_positions = HashSet::from([(0, 0)]);
+
+    for m in moves {
+        let (v, &times) = match m {
+            Move::Left(times) => ([-1, 0], times),
+            Move::Right(times) => ([1, 0], times),
+            Move::Up(times) => ([0, 1], times),
+            Move::Down(times) => ([0, -1], times),
+        };
+
+        for _ in 0..times {
+            rope[0][0] += v[0];
+            rope[0][1] += v[1];
+
+            for tail_idx in 1..rope.len() {
+                let head = rope[tail_idx - 1];
+                let dx: i32 = head[0] - rope[tail_idx][0];
+                let dy: i32 = head[1] - rope[tail_idx][1];
+                let dx_abs = dx.abs();
+                let dy_abs = dy.abs();
+
+                if dx_abs > 1 || dy_abs > 1 {
+                    rope[tail_idx][0] += dx.signum();
+                    rope[tail_idx][1] += dy.signum();
+
+                    if tail_idx == rope.len() - 1 {
+                        visited_positions.insert((rope[tail_idx][0], rope[tail_idx][1]));
+                    }
+                }
+            }
+        }
+    }
+
+    visited_positions
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -95,7 +133,9 @@ fn main() -> Result<(), anyhow::Error> {
     let visited_positions = simulate_rope(&moves);
 
     println!("Part 1 solution: {}", visited_positions.iter().count());
-    println!("Part 2 solution: {}", 0);
+
+    let visited_positions = simulate_long_rope(&moves);
+    println!("Part 2 solution: {}", visited_positions.iter().count());
 
     Ok(())
 }
@@ -114,6 +154,16 @@ R 4
 D 1
 L 5
 R 2";
+
+    const TEST_INPUT_LARGE: &str = "\
+R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20";
 
     #[test]
     fn test_parse_input() {
@@ -140,5 +190,21 @@ R 2";
         let visited_positions = simulate_rope(&moves);
 
         assert_eq!(visited_positions.iter().count(), 13);
+    }
+
+    #[test]
+    fn test_simulate_long_rope_1() {
+        let Problem { moves } = TEST_INPUT.parse().unwrap();
+        let visited_positions = simulate_long_rope(&moves);
+
+        assert_eq!(visited_positions.iter().count(), 1);
+    }
+
+    #[test]
+    fn test_simulate_long_rope_2() {
+        let Problem { moves } = TEST_INPUT_LARGE.parse().unwrap();
+        let visited_positions = simulate_long_rope(&moves);
+
+        assert_eq!(visited_positions.iter().count(), 36);
     }
 }
