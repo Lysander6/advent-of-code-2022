@@ -60,34 +60,8 @@ impl FromStr for Problem {
     }
 }
 
-fn simulate_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
-    let mut head = [0, 0];
-    let mut tail = [0, 0];
-    let mut visited_positions = HashSet::from([(0, 0)]);
-
-    for m in moves {
-        let (v, times) = m.into();
-        for _ in 0..times {
-            head[0] += v[0];
-            head[1] += v[1];
-
-            let dx: i32 = head[0] - tail[0];
-            let dy: i32 = head[1] - tail[1];
-
-            if dx.abs() > 1 || dy.abs() > 1 {
-                tail[0] += dx.signum();
-                tail[1] += dy.signum();
-
-                visited_positions.insert((tail[0], tail[1]));
-            }
-        }
-    }
-
-    visited_positions
-}
-
-fn simulate_long_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
-    let mut rope = [[0, 0]; 10];
+fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
+    let mut rope = vec![[0, 0]; length];
     let mut visited_positions = HashSet::from([(0, 0)]);
 
     for m in moves {
@@ -121,11 +95,11 @@ fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { moves } = input_string.parse()?;
-    let visited_positions = simulate_rope(&moves);
+    let visited_positions = simulate_rope(&moves, 2);
 
     println!("Part 1 solution: {}", visited_positions.len());
 
-    let visited_positions = simulate_long_rope(&moves);
+    let visited_positions = simulate_rope(&moves, 10);
     println!("Part 2 solution: {}", visited_positions.len());
 
     Ok(())
@@ -178,7 +152,7 @@ U 20";
     #[test]
     fn test_simulate_rope_1() {
         let Problem { moves } = TEST_INPUT.parse().unwrap();
-        let visited_positions = simulate_rope(&moves);
+        let visited_positions = simulate_rope(&moves, 2);
 
         assert_eq!(visited_positions.len(), 13);
     }
@@ -186,7 +160,7 @@ U 20";
     #[test]
     fn test_simulate_long_rope_1() {
         let Problem { moves } = TEST_INPUT.parse().unwrap();
-        let visited_positions = simulate_long_rope(&moves);
+        let visited_positions = simulate_rope(&moves, 10);
 
         assert_eq!(visited_positions.len(), 1);
     }
@@ -194,7 +168,7 @@ U 20";
     #[test]
     fn test_simulate_long_rope_2() {
         let Problem { moves } = TEST_INPUT_LARGE.parse().unwrap();
-        let visited_positions = simulate_long_rope(&moves);
+        let visited_positions = simulate_rope(&moves, 10);
 
         assert_eq!(visited_positions.len(), 36);
     }
