@@ -123,10 +123,10 @@ fn main() -> Result<(), anyhow::Error> {
     let Problem { moves } = input_string.parse()?;
     let visited_positions = simulate_rope(&moves);
 
-    println!("Part 1 solution: {}", visited_positions.iter().count());
+    println!("Part 1 solution: {}", visited_positions.len());
 
     let visited_positions = simulate_long_rope(&moves);
-    println!("Part 2 solution: {}", visited_positions.iter().count());
+    println!("Part 2 solution: {}", visited_positions.len());
 
     Ok(())
 }
@@ -180,7 +180,7 @@ U 20";
         let Problem { moves } = TEST_INPUT.parse().unwrap();
         let visited_positions = simulate_rope(&moves);
 
-        assert_eq!(visited_positions.iter().count(), 13);
+        assert_eq!(visited_positions.len(), 13);
     }
 
     #[test]
@@ -188,7 +188,7 @@ U 20";
         let Problem { moves } = TEST_INPUT.parse().unwrap();
         let visited_positions = simulate_long_rope(&moves);
 
-        assert_eq!(visited_positions.iter().count(), 1);
+        assert_eq!(visited_positions.len(), 1);
     }
 
     #[test]
@@ -196,6 +196,6 @@ U 20";
         let Problem { moves } = TEST_INPUT_LARGE.parse().unwrap();
         let visited_positions = simulate_long_rope(&moves);
 
-        assert_eq!(visited_positions.iter().count(), 36);
+        assert_eq!(visited_positions.len(), 36);
     }
 }
