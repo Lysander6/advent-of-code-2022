@@ -60,6 +60,8 @@ impl FromStr for Problem {
     }
 }
 
+/// Simulates movement of a rope of specified `length` and returns set of
+/// coordinates visited by the last knot of the rope
 fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
     let mut rope = vec![[0, 0]; length];
     let mut visited_positions = HashSet::from([(0, 0)]);
@@ -67,19 +69,37 @@ fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
     for m in moves {
         let (v, times) = m.into();
 
+        // Process movement one step at a time
         for _ in 0..times {
+            // Move head in the direction of movement
             rope[0][0] += v[0];
             rope[0][1] += v[1];
 
+            // Consider rest of the rope as a list of tiny ropes of two nodes
+            // (knots) - head and tail
             for tail_idx in 1..rope.len() {
+                // Name current `head` for convenience
                 let head = rope[tail_idx - 1];
+                // Check how the position of tiny rope's tail relates to its
+                // head
                 let dx: i32 = head[0] - rope[tail_idx][0];
                 let dy: i32 = head[1] - rope[tail_idx][1];
 
+                // If movement was significant enough to "separate" this knot
+                // from the previous one
                 if dx.abs() > 1 || dy.abs() > 1 {
+                    // By inspecting movement of 2-long rope you will discover
+                    // that for tail to keep up with its head (as in: not get
+                    // separated), it will ever need to move either (1) one
+                    // position in only horizontal/vertical axis, if its is on
+                    // the same axis as its head, or (2) one position in both
+                    // horizontal and vertical axes (so diagonally) otherwise.
+                    //
+                    // `signum` used here as more of a `clamp` to [-1, 1] range
                     rope[tail_idx][0] += dx.signum();
                     rope[tail_idx][1] += dy.signum();
 
+                    // Note the position of the last knot
                     if tail_idx == rope.len() - 1 {
                         visited_positions.insert((rope[tail_idx][0], rope[tail_idx][1]));
                     }
