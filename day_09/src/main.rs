@@ -31,6 +31,17 @@ impl FromStr for Move {
     }
 }
 
+impl Into<([i32; 2], usize)> for &Move {
+    fn into(self) -> ([i32; 2], usize) {
+        match self {
+            Move::Left(times) => ([-1, 0], *times),
+            Move::Right(times) => ([1, 0], *times),
+            Move::Up(times) => ([0, 1], *times),
+            Move::Down(times) => ([0, -1], *times),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Problem {
     moves: Vec<Move>,
@@ -55,13 +66,7 @@ fn simulate_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
     let mut visited_positions = HashSet::from([(0, 0)]);
 
     for m in moves {
-        let (v, &times) = match m {
-            Move::Left(times) => ([-1, 0], times),
-            Move::Right(times) => ([1, 0], times),
-            Move::Up(times) => ([0, 1], times),
-            Move::Down(times) => ([0, -1], times),
-        };
-
+        let (v, times) = m.into();
         for _ in 0..times {
             head[0] += v[0];
             head[1] += v[1];
@@ -86,12 +91,7 @@ fn simulate_long_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
     let mut visited_positions = HashSet::from([(0, 0)]);
 
     for m in moves {
-        let (v, &times) = match m {
-            Move::Left(times) => ([-1, 0], times),
-            Move::Right(times) => ([1, 0], times),
-            Move::Up(times) => ([0, 1], times),
-            Move::Down(times) => ([0, -1], times),
-        };
+        let (v, times) = m.into();
 
         for _ in 0..times {
             rope[0][0] += v[0];
