@@ -68,17 +68,10 @@ fn simulate_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
 
             let dx: i32 = head[0] - tail[0];
             let dy: i32 = head[1] - tail[1];
-            let dx_abs = dx.abs();
-            let dy_abs = dy.abs();
 
-            if dx_abs > 1 || dy_abs > 1 {
-                if dx_abs > dy_abs {
-                    tail[0] += v[0];
-                    tail[1] = head[1];
-                } else {
-                    tail[0] = head[0];
-                    tail[1] += v[1];
-                }
+            if dx.abs() > 1 || dy.abs() > 1 {
+                tail[0] += dx.signum();
+                tail[1] += dy.signum();
 
                 visited_positions.insert((tail[0], tail[1]));
             }
@@ -108,10 +101,8 @@ fn simulate_long_rope(moves: &Vec<Move>) -> HashSet<(i32, i32)> {
                 let head = rope[tail_idx - 1];
                 let dx: i32 = head[0] - rope[tail_idx][0];
                 let dy: i32 = head[1] - rope[tail_idx][1];
-                let dx_abs = dx.abs();
-                let dy_abs = dy.abs();
 
-                if dx_abs > 1 || dy_abs > 1 {
+                if dx.abs() > 1 || dy.abs() > 1 {
                     rope[tail_idx][0] += dx.signum();
                     rope[tail_idx][1] += dy.signum();
 
