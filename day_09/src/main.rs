@@ -60,10 +60,12 @@ impl FromStr for Problem {
     }
 }
 
-/// Simulates movement of a rope of specified `length` and returns set of
+/// Simulates movement of a rope of specified length `N` and returns set of
 /// coordinates visited by the last knot of the rope
-fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
-    let mut rope = vec![[0, 0]; length];
+fn simulate_rope<'a, const N: usize>(
+    moves: impl IntoIterator<Item = &'a Move>,
+) -> HashSet<(i32, i32)> {
+    let mut rope = [[0, 0]; N];
     let mut visited_positions = HashSet::from([(0, 0)]);
 
     for m in moves {
@@ -77,7 +79,7 @@ fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
 
             // Consider rest of the rope as a list of tiny ropes of two nodes
             // (knots) - head and tail
-            for tail_idx in 1..rope.len() {
+            for tail_idx in 1..N {
                 // Name current `head` for convenience
                 let head = rope[tail_idx - 1];
                 // Check how the position of tiny rope's tail relates to its
@@ -100,7 +102,7 @@ fn simulate_rope(moves: &Vec<Move>, length: usize) -> HashSet<(i32, i32)> {
                     rope[tail_idx][1] += dy.signum();
 
                     // Note the position of the last knot
-                    if tail_idx == rope.len() - 1 {
+                    if tail_idx == N - 1 {
                         visited_positions.insert((rope[tail_idx][0], rope[tail_idx][1]));
                     }
                 }
@@ -115,11 +117,13 @@ fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { moves } = input_string.parse()?;
-    let visited_positions = simulate_rope(&moves, 2);
+
+    let visited_positions = simulate_rope::<2>(&moves);
 
     println!("Part 1 solution: {}", visited_positions.len());
 
-    let visited_positions = simulate_rope(&moves, 10);
+    let visited_positions = simulate_rope::<10>(&moves);
+
     println!("Part 2 solution: {}", visited_positions.len());
 
     Ok(())
@@ -172,7 +176,7 @@ U 20";
     #[test]
     fn test_simulate_rope_1() {
         let Problem { moves } = TEST_INPUT.parse().unwrap();
-        let visited_positions = simulate_rope(&moves, 2);
+        let visited_positions = simulate_rope::<2>(&moves);
 
         assert_eq!(visited_positions.len(), 13);
     }
@@ -180,7 +184,7 @@ U 20";
     #[test]
     fn test_simulate_long_rope_1() {
         let Problem { moves } = TEST_INPUT.parse().unwrap();
-        let visited_positions = simulate_rope(&moves, 10);
+        let visited_positions = simulate_rope::<10>(&moves);
 
         assert_eq!(visited_positions.len(), 1);
     }
@@ -188,7 +192,7 @@ U 20";
     #[test]
     fn test_simulate_long_rope_2() {
         let Problem { moves } = TEST_INPUT_LARGE.parse().unwrap();
-        let visited_positions = simulate_rope(&moves, 10);
+        let visited_positions = simulate_rope::<10>(&moves);
 
         assert_eq!(visited_positions.len(), 36);
     }
