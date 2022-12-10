@@ -48,16 +48,20 @@ impl FromStr for Problem {
     }
 }
 
+/// Executes instructions and returns vector of register X's states at every
+/// cycle
 fn execute<'a>(instructions: impl IntoIterator<Item = &'a Instruction>) -> Vec<i32> {
     let mut register_x = 1i32;
-    let mut register_history = vec![register_x];
+    let mut register_history = vec![register_x]; // register state at 0-th cycle
 
     for inst in instructions {
+        // every instruction takes at least one cycle to complete
         register_history.push(register_x);
 
         match inst {
             Instruction::Noop => {}
             Instruction::Addx(v) => {
+                // `addx` instruction takes one additional cycle to complete
                 register_history.push(register_x);
                 register_x += v;
             }
