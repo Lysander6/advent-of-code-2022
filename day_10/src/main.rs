@@ -1,34 +1,70 @@
+use std::str::FromStr;
+
 use anyhow::{anyhow, bail, Context};
 use common::{get_arg, read_file_to_string};
 
-fn execute<'a>(instructions: impl IntoIterator<Item = &'a str>) -> Result<Vec<i32>, anyhow::Error> {
+#[derive(Debug)]
+enum Instruction {
+    Noop,
+    Addx(i32),
+}
+
+impl FromStr for Instruction {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s[..4] {
+            "noop" => Ok(Self::Noop),
+            "addx" => {
+                let (_, v) = s
+                    .split_once(' ')
+                    .ok_or_else(|| anyhow!("couldn't split '{}'", s))?;
+
+                let v = v
+                    .parse::<i32>()
+                    .with_context(|| format!("parsing '{}'", v))?;
+
+                Ok(Self::Addx(v))
+            }
+            _ => {
+                bail!("unknown instruction '{}'", s);
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Problem {
+    instructions: Vec<Instruction>,
+}
+
+impl FromStr for Problem {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let instructions = s.lines().map(|l| l.parse()).collect::<Result<_, _>>()?;
+
+        Ok(Problem { instructions })
+    }
+}
+
+fn execute<'a>(instructions: impl IntoIterator<Item = &'a Instruction>) -> Vec<i32> {
     let mut register_x = 1i32;
     let mut register_history = vec![register_x];
 
     for inst in instructions {
         register_history.push(register_x);
 
-        match &inst[..4] {
-            "noop" => {}
-            "addx" => {
+        match inst {
+            Instruction::Noop => {}
+            Instruction::Addx(v) => {
                 register_history.push(register_x);
-                let (_, v) = inst
-                    .split_once(' ')
-                    .ok_or_else(|| anyhow!("couldn't split '{}'", inst))?;
-
-                let v = v
-                    .parse::<i32>()
-                    .with_context(|| format!("parsing '{}'", v))?;
-
                 register_x += v;
-            }
-            _ => {
-                bail!("unknown instruction '{}'", inst);
             }
         }
     }
 
-    Ok(register_history)
+    register_history
 }
 
 fn calculate_score(register_history: &[i32]) -> Result<i32, anyhow::Error> {
@@ -58,8 +94,9 @@ fn print_crt(register_history: &[i32]) {
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
+    let Problem { instructions } = input_string.parse()?;
 
-    let register_history = execute(input_string.lines())?;
+    let register_history = execute(&instructions);
 
     println!("Part 1 solution: {}", calculate_score(&register_history)?);
     println!("Part 2 solution:");
@@ -223,8 +260,9 @@ noop";
 
     #[test]
     fn test_execute_1() {
-        let r = execute(TEST_INPUT.lines()).unwrap();
-        let score = calculate_score(&r).unwrap();
+        let Problem { instructions } = TEST_INPUT.parse().unwrap();
+        let register_history = execute(&instructions);
+        let score = calculate_score(&register_history).unwrap();
 
         assert_eq!(score, 13140);
     }
