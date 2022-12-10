@@ -1,30 +1,17 @@
 use anyhow::{anyhow, bail, Context};
 use common::{get_arg, read_file_to_string};
 
-fn execute<'a>(
-    instructions: impl IntoIterator<Item = &'a str>,
-) -> Result<Vec<(u64, i32)>, anyhow::Error> {
+fn execute<'a>(instructions: impl IntoIterator<Item = &'a str>) -> Result<Vec<i32>, anyhow::Error> {
     let mut register_x = 1i32;
-    let mut cycle = 0u64;
-    let mut signal_strengths = vec![];
+    let mut register_history = vec![register_x];
 
     for inst in instructions {
-        if (17 < cycle && cycle < 20)
-            || (57 < cycle && cycle < 60)
-            || (97 < cycle && cycle < 100)
-            || (137 < cycle && cycle < 140)
-            || (177 < cycle && cycle < 180)
-            || (217 < cycle && cycle < 220)
-        {
-            signal_strengths.push((cycle, register_x));
-        }
+        register_history.push(register_x);
 
         match &inst[..4] {
-            "noop" => {
-                cycle += 1;
-            }
+            "noop" => {}
             "addx" => {
-                cycle += 2;
+                register_history.push(register_x);
                 let (_, v) = inst
                     .split_once(' ')
                     .ok_or_else(|| anyhow!("couldn't split '{}'", inst))?;
@@ -41,20 +28,14 @@ fn execute<'a>(
         }
     }
 
-    Ok(signal_strengths)
+    Ok(register_history)
 }
 
-fn calculate_score(register_history: &[(u64, i32)]) -> Result<i32, anyhow::Error> {
+fn calculate_score(register_history: &[i32]) -> Result<i32, anyhow::Error> {
     let mut score = 0;
 
-    for cycle in [20u64, 60, 100, 140, 180, 220] {
-        let &(_, register_value) = register_history
-            .iter()
-            .take_while(|(c, _)| *c < cycle)
-            .last()
-            .ok_or_else(|| anyhow!("couldn't find record for cycle '{}'", cycle))?;
-
-        score += (cycle as i32) * register_value;
+    for cycle in [20i32, 60, 100, 140, 180, 220] {
+        score += cycle * register_history[cycle as usize];
     }
 
     Ok(score)
@@ -227,6 +208,7 @@ noop";
     #[test]
     fn test_execute_1() {
         let r = execute(TEST_INPUT.lines()).unwrap();
+        eprintln!("{:#?}", &r[..10]);
         let score = calculate_score(&r).unwrap();
 
         assert_eq!(score, 13140);
