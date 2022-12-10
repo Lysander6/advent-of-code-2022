@@ -85,25 +85,25 @@ fn calculate_score(register_history: &[i32]) -> i32 {
 /// Returns screen output for given register history, chunked into `width` long
 /// slices
 fn get_screen_output(register_history: &[i32], width: usize, height: usize) -> String {
-    let mut output = String::with_capacity((width + 1) * height);
-    let width = width as i32;
-
-    (0..width)
+    (0..width as i32)
         .cycle()
         .zip(register_history.iter().skip(1))
-        .for_each(|(cycle, &x)| {
-            if cycle - 2 < x && x < cycle + 2 {
-                output.push('#');
-            } else {
-                output.push('.');
-            }
+        .fold(
+            String::with_capacity((width + 1) * height),
+            |mut output, (cycle_pos, &x)| {
+                if (cycle_pos - x).abs() <= 1 {
+                    output.push('#');
+                } else {
+                    output.push('.');
+                }
 
-            if cycle == width - 1 {
-                output.push('\n');
-            }
-        });
+                if cycle_pos == (width as i32) - 1 {
+                    output.push('\n');
+                }
 
-    output
+                output
+            },
+        )
 }
 
 fn main() -> Result<(), anyhow::Error> {
