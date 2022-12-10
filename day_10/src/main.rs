@@ -49,7 +49,7 @@ impl FromStr for Problem {
 }
 
 /// Executes instructions and returns vector of register X's states at every
-/// cycle
+/// cycle ("register history")
 fn execute<'a>(instructions: impl IntoIterator<Item = &'a Instruction>) -> Vec<i32> {
     let mut register_x = 1i32;
     let mut register_history = vec![register_x]; // register state at 0-th cycle
@@ -82,18 +82,28 @@ fn calculate_score(register_history: &[i32]) -> i32 {
         .sum()
 }
 
-fn print_crt(register_history: &[i32]) {
-    for (i, x) in register_history[1..].iter().enumerate() {
-        let i = (i as i32) % 40;
-        if i == 0 {
-            print!("\n")
-        }
-        if i - 2 < *x && *x < i + 2 {
-            print!("#");
-        } else {
-            print!(".");
-        }
-    }
+/// Returns screen output for given register history, chunked into `width` long
+/// slices
+fn get_screen_output(register_history: &[i32], width: usize, height: usize) -> String {
+    let mut output = String::with_capacity((width + 1) * height);
+    let width = width as i32;
+
+    (0..width)
+        .cycle()
+        .zip(register_history.iter().skip(1))
+        .for_each(|(cycle, &x)| {
+            if cycle - 2 < x && x < cycle + 2 {
+                output.push('#');
+            } else {
+                output.push('.');
+            }
+
+            if cycle == width - 1 {
+                output.push('\n');
+            }
+        });
+
+    output
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -104,9 +114,10 @@ fn main() -> Result<(), anyhow::Error> {
     let register_history = execute(&instructions);
 
     println!("Part 1 solution: {}", calculate_score(&register_history));
-    println!("Part 2 solution:");
-
-    print_crt(&register_history);
+    println!(
+        "Part 2 solution:\n{}",
+        get_screen_output(&register_history, 40, 6).trim_end()
+    );
 
     Ok(())
 }
@@ -270,5 +281,24 @@ noop";
         let score = calculate_score(&register_history);
 
         assert_eq!(score, 13140);
+    }
+
+    #[test]
+    fn test_get_screen_output() {
+        let Problem { instructions } = TEST_INPUT.parse().unwrap();
+        let register_history = execute(&instructions);
+        let output = get_screen_output(&register_history, 40, 6);
+
+        assert_eq!(
+            output,
+            "\
+##..##..##..##..##..##..##..##..##..##..
+###...###...###...###...###...###...###.
+####....####....####....####....####....
+#####.....#####.....#####.....#####.....
+######......######......######......####
+#######.......#######.......#######.....
+"
+        );
     }
 }
