@@ -41,6 +41,20 @@ fn calculate_score(register_history: &[i32]) -> Result<i32, anyhow::Error> {
     Ok(score)
 }
 
+fn print_crt(register_history: &[i32]) {
+    for (i, x) in register_history[1..].iter().enumerate() {
+        let i = (i as i32) % 40;
+        if i == 0 {
+            print!("\n")
+        }
+        if i - 2 < *x && *x < i + 2 {
+            print!("#");
+        } else {
+            print!(".");
+        }
+    }
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -48,7 +62,9 @@ fn main() -> Result<(), anyhow::Error> {
     let register_history = execute(input_string.lines())?;
 
     println!("Part 1 solution: {}", calculate_score(&register_history)?);
-    println!("Part 2 solution: {}", 0);
+    println!("Part 2 solution:");
+
+    print_crt(&register_history);
 
     Ok(())
 }
@@ -208,7 +224,6 @@ noop";
     #[test]
     fn test_execute_1() {
         let r = execute(TEST_INPUT.lines()).unwrap();
-        eprintln!("{:#?}", &r[..10]);
         let score = calculate_score(&r).unwrap();
 
         assert_eq!(score, 13140);
