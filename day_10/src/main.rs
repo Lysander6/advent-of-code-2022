@@ -67,14 +67,15 @@ fn execute<'a>(instructions: impl IntoIterator<Item = &'a Instruction>) -> Vec<i
     register_history
 }
 
-fn calculate_score(register_history: &[i32]) -> Result<i32, anyhow::Error> {
-    let mut score = 0;
-
-    for cycle in [20i32, 60, 100, 140, 180, 220] {
-        score += cycle * register_history[cycle as usize];
-    }
-
-    Ok(score)
+/// Computes sum of cycle × value in register X at cycles 20, 60, 100, 140 (i.e.
+/// every fortieth cycle after cycle 20)
+fn calculate_score(register_history: &[i32]) -> i32 {
+    (0..)
+        .zip(register_history)
+        .skip(20)
+        .step_by(40)
+        .map(|(cycle, &x)| cycle * x)
+        .sum()
 }
 
 fn print_crt(register_history: &[i32]) {
@@ -98,7 +99,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     let register_history = execute(&instructions);
 
-    println!("Part 1 solution: {}", calculate_score(&register_history)?);
+    println!("Part 1 solution: {}", calculate_score(&register_history));
     println!("Part 2 solution:");
 
     print_crt(&register_history);
@@ -262,7 +263,7 @@ noop";
     fn test_execute_1() {
         let Problem { instructions } = TEST_INPUT.parse().unwrap();
         let register_history = execute(&instructions);
-        let score = calculate_score(&register_history).unwrap();
+        let score = calculate_score(&register_history);
 
         assert_eq!(score, 13140);
     }
