@@ -154,6 +154,10 @@ impl Monkey {
         self.items.pop_front()
     }
 
+    fn inspect(&self, item: u64) -> u64 {
+        self.operation.execute(item)
+    }
+
     fn test(&self, worry_level: u64) -> usize {
         self.test.check(worry_level)
     }
@@ -214,9 +218,14 @@ impl FromStr for Problem {
     }
 }
 
+/// Simulates monkeys inspecting and throwing items to each other and returns
+/// array with counts of how many items were inspected by each monkey
 fn do_your_business(monkeys: &mut [Monkey], rounds: usize, worry_decay: bool) -> Vec<u64> {
     let mut inspected_items = vec![0u64; monkeys.len()];
 
+    // We do leverage the fact, that all monkeys' divisors are prime numbers,
+    // otherwise product of them wouldn't necessarily give us least common
+    // multiple
     let least_common_multiple = monkeys.iter().map(|m| m.test.operand).product::<u64>();
 
     for _ in 0..rounds {
@@ -229,7 +238,7 @@ fn do_your_business(monkeys: &mut [Monkey], rounds: usize, worry_decay: bool) ->
                 inspected_items[i] += 1;
 
                 // Monkey inspects item
-                let item = monkey.operation.execute(item);
+                let item = monkey.inspect(item);
 
                 let item = if worry_decay {
                     // Worry level shrinks after inspection
