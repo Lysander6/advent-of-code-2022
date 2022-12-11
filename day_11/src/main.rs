@@ -205,7 +205,7 @@ impl FromStr for Problem {
     }
 }
 
-fn do_your_business(monkeys: &mut [Monkey], rounds: usize) -> Vec<u64> {
+fn do_your_business(monkeys: &mut [Monkey], rounds: usize, worry_decay: bool) -> Vec<u64> {
     let mut inspected_items = vec![0u64; monkeys.len()];
 
     for _ in 0..rounds {
@@ -221,7 +221,7 @@ fn do_your_business(monkeys: &mut [Monkey], rounds: usize) -> Vec<u64> {
                 let item = monkey.operation.execute(item);
 
                 // Worry level shrinks after inspection
-                let item = item / 3;
+                let item = if worry_decay { item / 3 } else { item };
 
                 // Throw item to another monkey
                 let monkey_idx_to_throw_item_to = monkey.test.do_test(item);
@@ -254,7 +254,7 @@ fn main() -> Result<(), anyhow::Error> {
     let input_string = read_file_to_string(&input_file_path)?;
 
     let Problem { mut monkeys } = input_string.parse()?;
-    let inspected_items = do_your_business(&mut monkeys, 20);
+    let inspected_items = do_your_business(&mut monkeys, 20, true);
 
     println!(
         "Part 1 solution: {}",
@@ -308,7 +308,7 @@ Monkey 3:
     #[test]
     fn test_do_your_business() {
         let Problem { mut monkeys } = TEST_INPUT.parse().unwrap();
-        do_your_business(&mut monkeys, 20);
+        do_your_business(&mut monkeys, 20, true);
 
         assert_eq!(monkeys[0].items, vec![10, 12, 14, 26, 34]);
         assert_eq!(monkeys[1].items, vec![245, 93, 53, 199, 115]);
