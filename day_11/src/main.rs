@@ -135,7 +135,6 @@ impl FromStr for MonkeyTest {
 
 #[derive(Debug)]
 struct Monkey {
-    index: usize,
     items: VecDeque<i32>,
     operation: Operation,
     test: MonkeyTest,
@@ -155,14 +154,11 @@ impl FromStr for Monkey {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (index, rest) = s
+        // Ignore header with index, as monkeys are passed in order, starting
+        // from index 0 anyway
+        let (_index, rest) = s
             .split_once('\n')
             .ok_or_else(|| anyhow!("couldn't split '{}' at newline", s))?;
-
-        let index = index
-            .trim_start_matches("Monkey ")
-            .trim_end_matches(":")
-            .parse::<usize>()?;
 
         let (items, rest) = rest
             .split_once('\n')
@@ -184,7 +180,6 @@ impl FromStr for Monkey {
         let test = test.parse()?;
 
         Ok(Self {
-            index,
             items,
             operation,
             test,
@@ -210,11 +205,61 @@ impl FromStr for Problem {
     }
 }
 
+fn do_your_business(monkeys: &mut [Monkey], rounds: usize) -> Vec<u64> {
+    let mut inspected_items = vec![0u64; monkeys.len()];
+
+    for _ in 0..rounds {
+        for i in 0..monkeys.len() {
+            let monkey = &mut monkeys[i];
+
+            let mut items_to_throw: Vec<(usize, i32)> = vec![];
+
+            while let Some(item) = monkey.pick_for_inspection() {
+                inspected_items[i] += 1;
+
+                // Monkey inspects item
+                let item = monkey.operation.execute(item);
+
+                // Worry level shrinks after inspection
+                let item = item / 3;
+
+                // Throw item to another monkey
+                let monkey_idx_to_throw_item_to = monkey.test.do_test(item);
+                items_to_throw.push((monkey_idx_to_throw_item_to, item));
+            }
+
+            // Distribute thrown items
+            for (idx, item) in items_to_throw {
+                monkeys[idx].receive(item);
+            }
+        }
+    }
+
+    inspected_items
+}
+
+fn score_monkey_business(inspected_items: &[u64]) -> u64 {
+    let mut inspected_items = inspected_items.to_owned();
+    inspected_items.sort_by(|a, b| b.cmp(a));
+
+    inspected_items
+        .into_iter()
+        .take(2)
+        .reduce(|a, b| a * b)
+        .unwrap_or(0)
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
 
-    println!("Part 1 solution: {}", 0);
+    let Problem { mut monkeys } = input_string.parse()?;
+    let inspected_items = do_your_business(&mut monkeys, 20);
+
+    println!(
+        "Part 1 solution: {}",
+        score_monkey_business(&inspected_items)
+    );
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -258,5 +303,24 @@ Monkey 3:
         let Problem { monkeys } = TEST_INPUT.parse().unwrap();
 
         assert_eq!(monkeys.len(), 4);
+    }
+
+    #[test]
+    fn test_do_your_business() {
+        let Problem { mut monkeys } = TEST_INPUT.parse().unwrap();
+        do_your_business(&mut monkeys, 20);
+
+        assert_eq!(monkeys[0].items, vec![10, 12, 14, 26, 34]);
+        assert_eq!(monkeys[1].items, vec![245, 93, 53, 199, 115]);
+        assert_eq!(monkeys[2].items, vec![]);
+        assert_eq!(monkeys[3].items, vec![]);
+    }
+
+    #[test]
+    fn test_score_monkey_business() {
+        let inspected_items = vec![101, 95, 7, 105];
+        let score = score_monkey_business(&inspected_items);
+
+        assert_eq!(score, 10605);
     }
 }
