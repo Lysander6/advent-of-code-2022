@@ -12,6 +12,7 @@ members = [
   "day_08",
   "day_09",
   "day_10",
+  "day_11",
 ]
 
 [workspace.dependencies]
