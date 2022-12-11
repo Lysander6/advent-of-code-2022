@@ -9,6 +9,17 @@ enum Either<L, R> {
     Right(R),
 }
 
+impl FromStr for Either<Old, u64> {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "old" => Either::Left(Old),
+            v => Either::Right(v.parse::<u64>()?),
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Old;
 
@@ -21,9 +32,10 @@ enum Operation {
 impl Operation {
     fn execute(&self, old: u64) -> u64 {
         use Either::*;
+        use Operation::*;
 
         match self {
-            Operation::Add(a, b) => {
+            Add(a, b) => {
                 let a = match a {
                     Left(_) => old,
                     Right(r) => *r,
@@ -35,7 +47,7 @@ impl Operation {
 
                 a + b
             }
-            Operation::Multiply(a, b) => {
+            Multiply(a, b) => {
                 let a = match a {
                     Left(_) => old,
                     Right(r) => *r,
@@ -63,15 +75,8 @@ impl FromStr for Operation {
             .try_into()
             .map_err(|_v| anyhow!("couldn't split '{}' into expected three parts", s))?;
 
-        let left = match left {
-            "old" => Either::Left(Old),
-            v => Either::Right(v.parse::<u64>()?),
-        };
-
-        let right = match right {
-            "old" => Either::Left(Old),
-            v => Either::Right(v.parse::<u64>()?),
-        };
+        let left = left.parse()?;
+        let right = right.parse()?;
 
         let operation = match operator {
             "+" => Self::Add(left, right),
@@ -84,15 +89,15 @@ impl FromStr for Operation {
 }
 
 #[derive(Clone, Debug)]
-struct MonkeyTest {
-    divisibility_operand: u64,
+struct DivisibilityTest {
+    operand: u64,
     if_true_receiver: usize,
     if_false_receiver: usize,
 }
 
-impl MonkeyTest {
-    fn do_test(&self, worry_level: u64) -> usize {
-        if worry_level % self.divisibility_operand == 0 {
+impl DivisibilityTest {
+    fn check(&self, worry_level: u64) -> usize {
+        if worry_level % self.operand == 0 {
             self.if_true_receiver
         } else {
             self.if_false_receiver
@@ -100,7 +105,7 @@ impl MonkeyTest {
     }
 }
 
-impl FromStr for MonkeyTest {
+impl FromStr for DivisibilityTest {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -110,7 +115,7 @@ impl FromStr for MonkeyTest {
             .try_into()
             .map_err(|_v| anyhow!("couldn't split '{}' into expected three parts", s))?;
 
-        let divisibility_operand = test
+        let operand = test
             .trim()
             .trim_start_matches("Test: divisible by ")
             .parse::<u64>()?;
@@ -126,7 +131,7 @@ impl FromStr for MonkeyTest {
             .parse::<usize>()?;
 
         Ok(Self {
-            divisibility_operand,
+            operand,
             if_true_receiver,
             if_false_receiver,
         })
@@ -137,7 +142,7 @@ impl FromStr for MonkeyTest {
 struct Monkey {
     items: VecDeque<u64>,
     operation: Operation,
-    test: MonkeyTest,
+    test: DivisibilityTest,
 }
 
 impl Monkey {
@@ -147,6 +152,10 @@ impl Monkey {
 
     fn pick_for_inspection(&mut self) -> Option<u64> {
         self.items.pop_front()
+    }
+
+    fn test(&self, worry_level: u64) -> usize {
+        self.test.check(worry_level)
     }
 }
 
@@ -208,10 +217,7 @@ impl FromStr for Problem {
 fn do_your_business(monkeys: &mut [Monkey], rounds: usize, worry_decay: bool) -> Vec<u64> {
     let mut inspected_items = vec![0u64; monkeys.len()];
 
-    let least_common_multiple = monkeys
-        .iter()
-        .map(|m| m.test.divisibility_operand)
-        .product::<u64>();
+    let least_common_multiple = monkeys.iter().map(|m| m.test.operand).product::<u64>();
 
     for _ in 0..rounds {
         for i in 0..monkeys.len() {
@@ -235,7 +241,7 @@ fn do_your_business(monkeys: &mut [Monkey], rounds: usize, worry_decay: bool) ->
                 };
 
                 // Throw item to another monkey
-                let monkey_idx_to_throw_item_to = monkey.test.do_test(item);
+                let monkey_idx_to_throw_item_to = monkey.test(item);
                 items_to_throw.push((monkey_idx_to_throw_item_to, item));
             }
 
