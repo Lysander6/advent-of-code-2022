@@ -134,7 +134,7 @@ fn find_shortest_path(
                     }
                 })
                 .min_by_key(|&(_, path_length)| path_length)
-                .unwrap();
+                .ok_or_else(|| anyhow!("no path from point {:?}", start_coords))?;
 
         shortest_path.push(shortest_path_point);
         walk_point = shortest_path_point;
@@ -144,7 +144,32 @@ fn find_shortest_path(
 }
 
 fn find_all_points_at_elevation(map: &[Vec<u8>], elevation: u8) -> Vec<(usize, usize)> {
-    todo!()
+    let mut points = vec![];
+
+    for x in 0..map.len() {
+        for y in 0..map[0].len() {
+            if map[x][y] == elevation {
+                points.push((x, y));
+            }
+        }
+    }
+
+    points
+}
+
+fn find_shortest_path_from_elevation(map: &[Vec<u8>], elevation: u8) -> usize {
+    let all_start_points = find_all_points_at_elevation(&map, elevation);
+
+    let path_len = all_start_points
+        .into_iter()
+        .map(|start_point| match find_shortest_path(&map, start_point) {
+            Ok(path) => path.len(),
+            Err(_) => 99999999, // TODO: temporary hack for when there's no path
+        })
+        .min()
+        .unwrap();
+
+    path_len - 1
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -156,9 +181,10 @@ fn main() -> Result<(), anyhow::Error> {
         .ok_or_else(|| anyhow!("couldn't find starting point coordinates"))?;
 
     let shortest_path = find_shortest_path(&map, start_coords)?;
-
     println!("Part 1 solution: {}", shortest_path.len() - 1);
-    println!("Part 2 solution: {}", 0);
+
+    let shortest_path_len = find_shortest_path_from_elevation(&map, 'a' as u8);
+    println!("Part 2 solution: {}", shortest_path_len);
 
     Ok(())
 }
@@ -200,5 +226,13 @@ abdefghi";
         let shortest_path = find_shortest_path(&map, start_coords).unwrap();
 
         assert_eq!(shortest_path.len() - 1, 31);
+    }
+
+    #[test]
+    fn test_find_shortest_path_from_elevation() {
+        let Problem { map } = TEST_INPUT.parse().unwrap();
+        let shortest_path_len = find_shortest_path_from_elevation(&map, 'a' as u8);
+
+        assert_eq!(shortest_path_len, 29);
     }
 }
