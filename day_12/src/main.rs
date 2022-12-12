@@ -147,12 +147,6 @@ fn find_shortest_path(
     Ok(shortest_path)
 }
 
-fn find_shortest_path_from_elevation(map: &[Vec<u8>], elevation: u8) -> usize {
-    find_shortest_path(&map, elevation)
-        .and_then(|path| Ok(path.len() - 1))
-        .unwrap_or(0)
-}
-
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -161,8 +155,8 @@ fn main() -> Result<(), anyhow::Error> {
     let shortest_path = find_shortest_path(&map, START)?;
     println!("Part 1 solution: {}", shortest_path.len() - 1);
 
-    let shortest_path_len = find_shortest_path_from_elevation(&map, 'a' as u8);
-    println!("Part 2 solution: {}", shortest_path_len);
+    let shortest_path = find_shortest_path(&map, 'a' as u8)?;
+    println!("Part 2 solution: {}", shortest_path.len() - 1);
 
     Ok(())
 }
@@ -208,8 +202,8 @@ abdefghi";
     #[test]
     fn test_find_shortest_path_from_elevation() {
         let Problem { map } = TEST_INPUT.parse().unwrap();
-        let shortest_path_len = find_shortest_path_from_elevation(&map, 'a' as u8);
+        let shortest_path = find_shortest_path(&map, 'a' as u8).unwrap();
 
-        assert_eq!(shortest_path_len, 29);
+        assert_eq!(shortest_path.len() - 1, 29);
     }
 }
