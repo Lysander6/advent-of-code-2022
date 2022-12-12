@@ -106,7 +106,7 @@ fn find_shortest_path(
             .collect::<Vec<_>>();
 
         // Note their path lengths and queue for further examination
-        for &(x, y) in unexplored_indices_that_can_access_p.iter() {
+        for (x, y) in unexplored_indices_that_can_access_p {
             path_lengths[x][y] = Some(p_path_len + 1);
             q.push_back((x, y, p_path_len + 1));
         }
