@@ -64,9 +64,9 @@ fn get_adjacent_indices(x: usize, y: usize, x_dim: usize, y_dim: usize) -> Vec<(
 }
 
 /// Finds shortest path from point labeled `start_point_label` to point labeled
-/// `end_point_label` and returns number of steps needed to one from the other
-/// (i.e. path, if it includes both ends, will have length one greater than
-/// number of steps)
+/// `end_point_label` and returns number of steps needed to get to one from the
+/// other (i.e. path, if it includes both ends, will have length one greater
+/// than number of steps)
 fn find_shortest_path(
     map: &[Vec<u8>],
     start_point_label: u8,
