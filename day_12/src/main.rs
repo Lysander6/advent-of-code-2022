@@ -44,7 +44,7 @@ fn find_named_point(map: &[Vec<u8>], point: u8) -> Option<(usize, usize)> {
     None
 }
 
-fn get_adjacent_indices(x: usize, y: usize, x_dim: usize, y_dim: usize) -> Vec<(usize, usize)> {
+fn get_adjacent_points(x: usize, y: usize, x_dim: usize, y_dim: usize) -> Vec<(usize, usize)> {
     let mut v = Vec::with_capacity(4);
 
     if x > 0 {
@@ -92,11 +92,11 @@ fn find_shortest_path(
         }
 
         // Get all adjacent points
-        let adjacent_indices = get_adjacent_indices(p_x, p_y, x_dim, y_dim);
+        let adjacent_points = get_adjacent_points(p_x, p_y, x_dim, y_dim);
 
         // Keep only these that can access point `p`
         let p_height = map[p_x][p_y];
-        let unexplored_indices_that_can_access_p = adjacent_indices
+        let unexplored_points_that_can_access_p = adjacent_points
             .into_iter()
             // We can access point `p` from points not lower than `p_height - 1`
             // (so also from the ones that are higher than `p`)
@@ -106,7 +106,7 @@ fn find_shortest_path(
             .collect::<Vec<_>>();
 
         // Note their path lengths and queue for further examination
-        for (x, y) in unexplored_indices_that_can_access_p {
+        for (x, y) in unexplored_points_that_can_access_p {
             path_lengths[x][y] = Some(p_path_len + 1);
             q.push_back((x, y, p_path_len + 1));
         }
