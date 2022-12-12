@@ -72,7 +72,7 @@ fn get_adjacent_indices(x: usize, y: usize, x_dim: usize, y_dim: usize) -> Vec<(
 /// vector
 fn find_shortest_path(
     map: &[Vec<u8>],
-    start_coords: (usize, usize),
+    start_point_label: u8,
 ) -> Result<Vec<(usize, usize)>, anyhow::Error> {
     let end_coords = find_named_point(&map, END)
         .ok_or_else(|| anyhow!("couldn't find ending point coordinates"))?;
@@ -82,13 +82,17 @@ fn find_shortest_path(
 
     let mut path_lengths: Vec<Vec<Option<u32>>> = vec![vec![None; map[0].len()]; map.len()];
 
+    // We are looking for starting point with label `start_point_label`
+    let mut start_point = (0, 0);
+
     // We start from the end point
     let mut q = VecDeque::from([(end_coords.0, end_coords.1, 0u32)]);
     path_lengths[end_coords.0][end_coords.1] = Some(0);
 
     while let Some((p_x, p_y, p_path_len)) = q.pop_front() {
-        // We are done if we reached starting point
-        if p_x == start_coords.0 && p_y == start_coords.1 {
+        // We are done if we reached point with label `start_point_label`
+        if map[p_x][p_y] == start_point_label {
+            start_point = (p_x, p_y);
             break;
         }
 
@@ -113,7 +117,7 @@ fn find_shortest_path(
         }
     }
 
-    let mut walk_point = start_coords;
+    let mut walk_point = start_point;
     let mut shortest_path = vec![walk_point];
 
     while walk_point != end_coords {
@@ -134,7 +138,7 @@ fn find_shortest_path(
                     }
                 })
                 .min_by_key(|&(_, path_length)| path_length)
-                .ok_or_else(|| anyhow!("no path from point {:?}", start_coords))?;
+                .ok_or_else(|| anyhow!("no path from point {:?}", start_point))?;
 
         shortest_path.push(shortest_path_point);
         walk_point = shortest_path_point;
@@ -143,33 +147,10 @@ fn find_shortest_path(
     Ok(shortest_path)
 }
 
-fn find_all_points_at_elevation(map: &[Vec<u8>], elevation: u8) -> Vec<(usize, usize)> {
-    let mut points = vec![];
-
-    for x in 0..map.len() {
-        for y in 0..map[0].len() {
-            if map[x][y] == elevation {
-                points.push((x, y));
-            }
-        }
-    }
-
-    points
-}
-
 fn find_shortest_path_from_elevation(map: &[Vec<u8>], elevation: u8) -> usize {
-    let all_start_points = find_all_points_at_elevation(&map, elevation);
-
-    let path_len = all_start_points
-        .into_iter()
-        .map(|start_point| match find_shortest_path(&map, start_point) {
-            Ok(path) => path.len(),
-            Err(_) => 99999999, // TODO: temporary hack for when there's no path
-        })
-        .min()
-        .unwrap();
-
-    path_len - 1
+    find_shortest_path(&map, elevation)
+        .and_then(|path| Ok(path.len() - 1))
+        .unwrap_or(0)
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -177,10 +158,7 @@ fn main() -> Result<(), anyhow::Error> {
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { map } = input_string.parse()?;
 
-    let start_coords = find_named_point(&map, START)
-        .ok_or_else(|| anyhow!("couldn't find starting point coordinates"))?;
-
-    let shortest_path = find_shortest_path(&map, start_coords)?;
+    let shortest_path = find_shortest_path(&map, START)?;
     println!("Part 1 solution: {}", shortest_path.len() - 1);
 
     let shortest_path_len = find_shortest_path_from_elevation(&map, 'a' as u8);
@@ -222,8 +200,7 @@ abdefghi";
     #[test]
     fn test_find_shortest_path() {
         let Problem { map } = TEST_INPUT.parse().unwrap();
-        let start_coords = find_named_point(&map, START).unwrap();
-        let shortest_path = find_shortest_path(&map, start_coords).unwrap();
+        let shortest_path = find_shortest_path(&map, START).unwrap();
 
         assert_eq!(shortest_path.len() - 1, 31);
     }
