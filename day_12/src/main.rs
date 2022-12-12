@@ -70,9 +70,10 @@ fn get_adjacent_indices(x: usize, y: usize, x_dim: usize, y_dim: usize) -> Vec<(
 /// Note: result will contain both starting and ending points, so number of
 /// steps taken to reach end from start will be one less than length of returned
 /// vector
-fn find_shortest_path(map: &[Vec<u8>]) -> Result<Vec<(usize, usize)>, anyhow::Error> {
-    let start_coords = find_named_point(&map, START)
-        .ok_or_else(|| anyhow!("couldn't find starting point coordinates"))?;
+fn find_shortest_path(
+    map: &[Vec<u8>],
+    start_coords: (usize, usize),
+) -> Result<Vec<(usize, usize)>, anyhow::Error> {
     let end_coords = find_named_point(&map, END)
         .ok_or_else(|| anyhow!("couldn't find ending point coordinates"))?;
 
@@ -142,12 +143,19 @@ fn find_shortest_path(map: &[Vec<u8>]) -> Result<Vec<(usize, usize)>, anyhow::Er
     Ok(shortest_path)
 }
 
+fn find_all_points_at_elevation(map: &[Vec<u8>], elevation: u8) -> Vec<(usize, usize)> {
+    todo!()
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { map } = input_string.parse()?;
 
-    let shortest_path = find_shortest_path(&map)?;
+    let start_coords = find_named_point(&map, START)
+        .ok_or_else(|| anyhow!("couldn't find starting point coordinates"))?;
+
+    let shortest_path = find_shortest_path(&map, start_coords)?;
 
     println!("Part 1 solution: {}", shortest_path.len() - 1);
     println!("Part 2 solution: {}", 0);
@@ -188,7 +196,8 @@ abdefghi";
     #[test]
     fn test_find_shortest_path() {
         let Problem { map } = TEST_INPUT.parse().unwrap();
-        let shortest_path = find_shortest_path(&map).unwrap();
+        let start_coords = find_named_point(&map, START).unwrap();
+        let shortest_path = find_shortest_path(&map, start_coords).unwrap();
 
         assert_eq!(shortest_path.len() - 1, 31);
     }
