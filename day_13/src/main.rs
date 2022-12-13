@@ -34,12 +34,8 @@ impl FromStr for Packet<u8> {
             let non_nested_commas =
                 s.char_indices()
                     .filter_map(|(i, c)| match (nesting_level, c) {
-                        (_, ',') => {
-                            if nesting_level == 0 {
-                                Some(i + 1) // index right after comma
-                            } else {
-                                None
-                            }
+                        (0, ',') => {
+                            Some(i + 1) // index right after comma
                         }
                         (_, '[') => {
                             nesting_level += 1;
@@ -56,6 +52,7 @@ impl FromStr for Packet<u8> {
             split_at_indices.extend(non_nested_commas);
             split_at_indices.push(s.len() + 1);
 
+            // Recursively parse nested packets
             for idxs in split_at_indices.windows(2) {
                 let range = idxs[0]..(idxs[1] - 1);
                 parts.push(
