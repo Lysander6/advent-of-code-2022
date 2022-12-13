@@ -35,9 +35,9 @@ impl FromStr for Packet<u8> {
             let non_nested_commas =
                 s.char_indices()
                     .filter_map(|(i, c)| match (nesting_level, c) {
-                        // Only collect indices of commas between packets only
-                        // at the top-most level - not any nested ones (which
-                        // will be processed by recursive calls to `parse`)
+                        // Only collect indices of commas between packets at the
+                        // top-most level - not any nested ones (which will be
+                        // processed by recursive calls to `parse`)
                         (0, ',') => {
                             Some(i + 1) // index right after comma
                         }
