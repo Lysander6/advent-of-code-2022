@@ -17,23 +17,27 @@ impl FromStr for Packet<u8> {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim(); // trim trailing whitespaces ._.
+        let s = s.trim(); // Trim any whitespace at the both ends
 
-        if &s[0..1] == "[" {
-            // Nested
-            let mut parts: Vec<Self> = vec![];
-
+        // If `s` starts with `[` then we are dealing with nested packet,
+        // otherwise it's literal value
+        if s.starts_with('[') {
+            // Exit early on empty nested packet
             if s == "[]" {
-                return Ok(Self::Nested(parts));
+                return Ok(Self::Nested(vec![]));
             }
 
             // Trim outermost braces
             let s = &s[1..(s.len() - 1)];
 
+            // Collect indices by which we will split incoming nested packet
             let mut nesting_level = 0;
             let non_nested_commas =
                 s.char_indices()
                     .filter_map(|(i, c)| match (nesting_level, c) {
+                        // Only collect indices of commas between packets only
+                        // at the top-most level - not any nested ones (which
+                        // will be processed by recursive calls to `parse`)
                         (0, ',') => {
                             Some(i + 1) // index right after comma
                         }
@@ -48,23 +52,23 @@ impl FromStr for Packet<u8> {
                         _ => None,
                     });
 
+            // Pad comma indices with 0 and `s.len() + 1` so we can iterate over
+            // whole array in consistent manner
             let mut split_at_indices = vec![0];
             split_at_indices.extend(non_nested_commas);
             split_at_indices.push(s.len() + 1);
 
-            // Recursively parse nested packets
-            for idxs in split_at_indices.windows(2) {
-                let range = idxs[0]..(idxs[1] - 1);
-                parts.push(
-                    s[range]
-                        .parse()
-                        .with_context(|| format!("parsing '{}'", s))?,
-                );
-            }
+            let packets = split_at_indices
+                .windows(2)
+                .map(|idxs| {
+                    let range = idxs[0]..(idxs[1] - 1);
+                    s[range].parse()
+                })
+                .collect::<Result<_, _>>()?;
 
-            Ok(Self::Nested(parts))
+            Ok(Self::Nested(packets))
         } else {
-            // Literal
+            // Literal value
             Ok(Self::Val(
                 s.parse::<u8>()
                     .with_context(|| format!("parsing u8 from '{}'", s))?,
@@ -78,15 +82,15 @@ impl PartialOrd for Packet<u8> {
         use Packet::*;
 
         match (self, other) {
-            (Val(_), Nested(_)) => {
-                let left = Nested(vec![self.clone()]);
+            (Val(_), Nested(v)) => {
+                let left = vec![self.clone()];
 
-                left.partial_cmp(other)
+                left.partial_cmp(v)
             }
-            (Nested(_), Val(_)) => {
-                let right = Nested(vec![other.clone()]);
+            (Nested(v), Val(_)) => {
+                let right = vec![other.clone()];
 
-                self.partial_cmp(&right)
+                v.partial_cmp(&right)
             }
             (Val(a), Val(b)) => a.partial_cmp(b),
             (Nested(a), Nested(b)) => a.partial_cmp(b),
