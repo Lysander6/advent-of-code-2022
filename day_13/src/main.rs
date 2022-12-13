@@ -3,8 +3,12 @@ use std::{cmp::Ordering, str::FromStr};
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
 
-#[derive(Clone, Debug, PartialEq)]
-enum Packet<T> {
+#[derive(Clone, Debug, PartialEq, Eq, Ord)]
+enum Packet<T>
+where
+    T: PartialEq + Eq + PartialOrd + Ord,
+    Packet<T>: PartialOrd,
+{
     Val(T),
     Nested(Vec<Packet<T>>),
 }
@@ -124,6 +128,33 @@ fn find_indices_of_packets_in_correct_order(packet_pairs: &[(Packet<u8>, Packet<
         .collect()
 }
 
+fn find_decoder_key(packet_pairs: &Vec<(Packet<u8>, Packet<u8>)>) -> Result<u64, anyhow::Error> {
+    let mut packets = packet_pairs
+        .clone()
+        .into_iter()
+        .flat_map(|pair| [pair.0, pair.1])
+        .collect::<Vec<_>>();
+
+    let divider_packet_1: Packet<u8> = "[[2]]".parse()?;
+    let divider_packet_2: Packet<u8> = "[[6]]".parse()?;
+
+    packets.push(divider_packet_1.clone());
+    packets.push(divider_packet_2.clone());
+
+    packets.sort();
+
+    let divider_packet_1_idx = packets
+        .iter()
+        .position(|p| *p == divider_packet_1)
+        .ok_or_else(|| anyhow!("couldn't find first divider packet"))?;
+    let divider_packet_2_idx = packets
+        .iter()
+        .position(|p| *p == divider_packet_2)
+        .ok_or_else(|| anyhow!("couldn't find second divider packet"))?;
+
+    Ok((divider_packet_1_idx as u64 + 1) * (divider_packet_2_idx as u64 + 1))
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -136,7 +167,8 @@ fn main() -> Result<(), anyhow::Error> {
         "Part 1 solution: {}",
         indices_in_correct_order.into_iter().sum::<u64>()
     );
-    println!("Part 2 solution: {}", 0);
+
+    println!("Part 2 solution: {}", find_decoder_key(&packet_pairs)?);
 
     Ok(())
 }
@@ -248,5 +280,13 @@ mod tests {
         let result = find_indices_of_packets_in_correct_order(&packet_pairs);
 
         assert_eq!(result.into_iter().sum::<u64>(), 13);
+    }
+
+    #[test]
+    fn test_find_decoder_key() {
+        let Problem { packet_pairs } = TEST_INPUT.parse().unwrap();
+        let result = find_decoder_key(&packet_pairs).unwrap();
+
+        assert_eq!(result, 140);
     }
 }
