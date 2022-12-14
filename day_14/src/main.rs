@@ -109,7 +109,7 @@ fn print_map(map: &Vec<Vec<char>>) {
     }
 }
 
-fn simulate_sand(map: &Vec<Vec<char>>, sand_source: (usize, usize)) -> u64 {
+fn simulate_sand(map: &Vec<Vec<char>>, sand_source: (usize, usize)) -> (Vec<Vec<char>>, u64) {
     let mut map = map.clone();
     let mut sand_units_that_came_to_rest = 0;
     let x_max = map.len() - 1;
@@ -162,7 +162,7 @@ fn simulate_sand(map: &Vec<Vec<char>>, sand_source: (usize, usize)) -> u64 {
         }
     }
 
-    sand_units_that_came_to_rest
+    (map, sand_units_that_came_to_rest)
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -174,7 +174,13 @@ fn main() -> Result<(), anyhow::Error> {
 
     print_map(&map);
 
-    println!("Part 1 solution: {}", simulate_sand(&map, sand_source));
+    println!("-----------------------------------------------------------------------");
+
+    let (filled_map, sand_count) = simulate_sand(&map, sand_source);
+
+    print_map(&filled_map);
+
+    println!("Part 1 solution: {}", sand_count);
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -209,7 +215,7 @@ mod tests {
         let Problem {
             map, sand_source, ..
         } = TEST_INPUT.parse().unwrap();
-        let sand_count = simulate_sand(&map, sand_source);
+        let sand_count = simulate_sand(&map, sand_source).1;
 
         assert_eq!(sand_count, 24);
     }
