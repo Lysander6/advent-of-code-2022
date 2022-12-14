@@ -11,8 +11,6 @@ const SOURCE: char = '+';
 #[derive(Debug)]
 struct Problem {
     map: Vec<Vec<char>>,
-    orig_x_range: (usize, usize),
-    y_range: (usize, usize),
     sand_source: (usize, usize),
 }
 
@@ -93,8 +91,6 @@ impl FromStr for Problem {
 
         Ok(Problem {
             map,
-            orig_x_range: (x_min, x_max),
-            y_range: (y_min, y_max),
             sand_source,
         })
     }
@@ -165,6 +161,106 @@ fn simulate_sand(map: &Vec<Vec<char>>, sand_source: (usize, usize)) -> (Vec<Vec<
     (map, sand_units_that_came_to_rest)
 }
 
+fn add_floor(map: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let mut map = map.clone();
+
+    for x in 0..map.len() {
+        map[x].push(EMPTY);
+        map[x].push(ROCK);
+    }
+
+    map
+}
+
+fn simulate_sand_with_endless_floor(
+    map: &Vec<Vec<char>>,
+    sand_source: (usize, usize),
+) -> (Vec<Vec<char>>, u64) {
+    // Add padding columns to allow for sand to fill gaps at edges of map
+    let y_len = map[0].len();
+    let mut new_map = vec![vec![EMPTY; y_len]];
+    new_map.append(&mut map.clone());
+    new_map.push(vec![EMPTY; y_len]);
+
+    // Adjust sand source position, moved due to added padding columns
+    let sand_source = (sand_source.0 + 1, sand_source.1);
+
+    // Add floor
+    let mut map = add_floor(&new_map);
+
+    let mut sand_units_that_came_to_rest_inside_map = 0;
+    let x_max = map.len() - 1;
+
+    'simulation: loop {
+        let (mut sand_x, mut sand_y) = sand_source;
+
+        'sand: loop {
+            // Check if cell below is empty
+            if map[sand_x][sand_y + 1] == EMPTY {
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Check if moving left would place sand outside the map
+            if sand_x == 0 {
+                // Could we possibly move right?
+                // TODO: could we avoid this duplication?
+                if sand_x + 1 <= x_max && map[sand_x + 1][sand_y + 1] == EMPTY {
+                    sand_x += 1;
+                    sand_y += 1;
+                    continue 'sand;
+                }
+                break 'sand;
+            }
+
+            // Check if bottom left is empty
+            if map[sand_x - 1][sand_y + 1] == EMPTY {
+                sand_x -= 1;
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Check if moving right would place sand outside the map
+            if sand_x == x_max {
+                break 'sand;
+            }
+
+            // Check if bottom right is empty
+            if map[sand_x + 1][sand_y + 1] == EMPTY {
+                sand_x += 1;
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Sand didn't move anymore
+            break 'sand;
+        }
+
+        // Settle down
+        map[sand_x][sand_y] = SAND;
+        sand_units_that_came_to_rest_inside_map += 1;
+
+        // Check if sand settled down at sand source
+        if sand_x == sand_source.0 && sand_y == sand_source.1 {
+            break 'simulation;
+        }
+    }
+
+    // Check how high did sand get on first and last columns of map - the sand
+    // outside the map should make two big triangles with sum(1..column height)
+    // (exclusive, as column inside map will already be counted) units of sand
+    let left_col_sand_height = map[0].iter().position(|c| *c == SAND).unwrap();
+    let right_col_sand_height = map[map.len() - 1].iter().position(|c| *c == SAND).unwrap();
+
+    let left_sand = (1..left_col_sand_height as u64).sum::<u64>();
+    let right_sand = (1..right_col_sand_height as u64).sum::<u64>();
+
+    (
+        map,
+        sand_units_that_came_to_rest_inside_map + left_sand + right_sand,
+    )
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -176,12 +272,16 @@ fn main() -> Result<(), anyhow::Error> {
 
     println!("-----------------------------------------------------------------------");
 
-    let (filled_map, sand_count) = simulate_sand(&map, sand_source);
+    let (filled_map, pt1_sand_count) = simulate_sand(&map, sand_source);
 
     print_map(&filled_map);
 
-    println!("Part 1 solution: {}", sand_count);
-    println!("Part 2 solution: {}", 0);
+    let (filled_map, pt2_sand_count) = simulate_sand_with_endless_floor(&map, sand_source);
+
+    print_map(&filled_map);
+
+    println!("Part 1 solution: {}", pt1_sand_count);
+    println!("Part 2 solution: {}", pt2_sand_count);
 
     Ok(())
 }
@@ -198,13 +298,9 @@ mod tests {
     fn test_input_parsing() {
         let Problem {
             map,
-            orig_x_range,
-            y_range,
             sand_source,
         } = TEST_INPUT.parse().unwrap();
 
-        assert_eq!(orig_x_range, (494, 503));
-        assert_eq!(y_range, (4, 9));
         assert_eq!(sand_source, (6, 0));
         assert_eq!(map.len(), 10);
         assert_eq!(map[0].len(), 10);
@@ -218,5 +314,26 @@ mod tests {
         let sand_count = simulate_sand(&map, sand_source).1;
 
         assert_eq!(sand_count, 24);
+    }
+
+    #[test]
+    fn test_add_floor() {
+        let Problem { map, .. } = TEST_INPUT.parse().unwrap();
+        let map = add_floor(&map);
+
+        assert_eq!(map.len(), 10); // unchanged
+        assert_eq!(map[0].len(), 12);
+    }
+
+    #[test]
+    fn test_simulate_sand_with_endless_floor() {
+        let Problem {
+            map, sand_source, ..
+        } = TEST_INPUT.parse().unwrap();
+        let (map, sand_count) = simulate_sand_with_endless_floor(&map, sand_source);
+
+        print_map(&map);
+
+        assert_eq!(sand_count, 93);
     }
 }
