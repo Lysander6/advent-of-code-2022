@@ -249,8 +249,8 @@ fn simulate_sand_with_endless_floor(
     // Check how high did sand get on first and last columns of map - the sand
     // outside the map should make two big triangles with sum(1..column height)
     // (exclusive, as column inside map will already be counted) units of sand
-    let left_col_sand_height = map[0].iter().position(|c| *c == SAND).unwrap();
-    let right_col_sand_height = map[map.len() - 1].iter().position(|c| *c == SAND).unwrap();
+    let left_col_sand_height = map[0].len() - map[0].iter().position(|c| *c == SAND).unwrap() - 1;
+    let right_col_sand_height = map[0].len() - map[map.len() - 1].iter().position(|c| *c == SAND).unwrap() - 1;
 
     let left_sand = (1..left_col_sand_height as u64).sum::<u64>();
     let right_sand = (1..right_col_sand_height as u64).sum::<u64>();
