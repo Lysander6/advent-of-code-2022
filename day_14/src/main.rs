@@ -109,14 +109,72 @@ fn print_map(map: &Vec<Vec<char>>) {
     }
 }
 
+fn simulate_sand(map: &Vec<Vec<char>>, sand_source: (usize, usize)) -> u64 {
+    let mut map = map.clone();
+    let mut sand_units_that_came_to_rest = 0;
+    let x_max = map.len() - 1;
+    let y_max = map[0].len() - 1;
+
+    'simulation: loop {
+        let (mut sand_x, mut sand_y) = sand_source;
+
+        'sand: loop {
+            // Check if sand is going to fall through bottom of simulation if it
+            // keeps moving down
+            if sand_y + 1 > y_max {
+                break 'simulation;
+            }
+
+            // Check if cell below is empty
+            if map[sand_x][sand_y + 1] == EMPTY {
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Check if moving left would place sand outside the map
+            if sand_x == 0 {
+                break 'simulation;
+            }
+
+            // Check if bottom left is empty
+            if map[sand_x - 1][sand_y + 1] == EMPTY {
+                sand_x -= 1;
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Check if moving right would place sand outside the map
+            if sand_x == x_max {
+                break 'simulation;
+            }
+
+            // Check if bottom right is empty
+            if map[sand_x + 1][sand_y + 1] == EMPTY {
+                sand_x += 1;
+                sand_y += 1;
+                continue 'sand;
+            }
+
+            // Settle down
+            map[sand_x][sand_y] = SAND;
+            sand_units_that_came_to_rest += 1;
+            break 'sand; // a.k.a. `continue 'simulation;`
+        }
+    }
+
+    sand_units_that_came_to_rest
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
-    let Problem { map, .. } = input_string.parse()?;
+    let Problem {
+        map, sand_source, ..
+    } = input_string.parse()?;
 
     print_map(&map);
 
-    println!("Part 1 solution: {}", 0);
+    println!("Part 1 solution: {}", simulate_sand(&map, sand_source));
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -144,5 +202,15 @@ mod tests {
         assert_eq!(sand_source, (6, 0));
         assert_eq!(map.len(), 10);
         assert_eq!(map[0].len(), 10);
+    }
+
+    #[test]
+    fn test_simulate_sand() {
+        let Problem {
+            map, sand_source, ..
+        } = TEST_INPUT.parse().unwrap();
+        let sand_count = simulate_sand(&map, sand_source);
+
+        assert_eq!(sand_count, 24);
     }
 }
