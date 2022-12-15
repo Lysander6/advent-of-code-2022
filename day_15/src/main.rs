@@ -128,8 +128,7 @@ fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
 
     let covered_cells = merged_coverages
         .iter()
-        .fold(0, |acc, range| acc + (range.0 - range.1).abs()) as u32
-        + 1;
+        .fold(0, |acc, range| acc + (range.0 - range.1).abs() + 1) as u32;
 
     let beacons_at_row = beacons_at_row
         .filter_map(|b| {
@@ -228,7 +227,7 @@ Sensor at x=20, y=1: closest beacon is at x=15, y=3";
         let coverage = find_coverage_for_row(10, &reports);
         assert_eq!(coverage, 26);
         let coverage = find_coverage_for_row(11, &reports);
-        assert_eq!(coverage, 27);
+        assert_eq!(coverage, 28); // Cell with Sensor counts as covered
     }
 
     #[test]
