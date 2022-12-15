@@ -84,33 +84,38 @@ fn find_sensor_coverage_at_row(y: i32, sensor: &Sensor, beacon: &Beacon) -> Opti
     Some((sensor.0 - diff, sensor.0 + diff))
 }
 
+/// Merges inclusive ranges that either overlap or neighbor each other
+fn merge_ranges(mut ranges: Vec<(i32, i32)>) -> Vec<(i32, i32)> {
+    if ranges.len() <= 1 {
+        return ranges;
+    }
+
+    ranges.sort_by_key(|r| r.0);
+
+    let mut merged_ranges = vec![];
+    let mut coverage = ranges[0];
+
+    for other in ranges[1..].iter() {
+        if coverage.1 >= other.0 - 1 {
+            // Ranges overlap or are next to each other
+            coverage = (coverage.0, i32::max(coverage.1, other.1));
+        } else {
+            merged_ranges.push(coverage);
+            coverage = *other;
+        }
+    }
+    merged_ranges.push(coverage);
+
+    merged_ranges
+}
+
 fn get_covered_ranges_at_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> Vec<(i32, i32)> {
-    let mut coverages_at_y = reports
+    let coverages_at_y = reports
         .iter()
         .filter_map(|(sensor, beacon)| find_sensor_coverage_at_row(y, sensor, beacon))
         .collect::<Vec<_>>();
 
-    if coverages_at_y.len() == 0 {
-        return vec![];
-    }
-
-    coverages_at_y.sort_by_key(|r| r.0);
-
-    let mut merged_coverages: Vec<(i32, i32)> = vec![];
-    let mut coverage = coverages_at_y[0];
-
-    for other in coverages_at_y[1..].iter() {
-        if coverage.1 >= other.0 - 1 {
-            // Ranges overlap
-            coverage = (coverage.0, i32::max(coverage.1, other.1));
-        } else {
-            merged_coverages.push(coverage);
-            coverage = *other;
-        }
-    }
-    merged_coverages.push(coverage);
-
-    merged_coverages
+    merge_ranges(coverages_at_y)
 }
 
 fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
