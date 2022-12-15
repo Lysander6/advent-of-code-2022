@@ -126,3 +126,11 @@ dependencies = [
  "anyhow",
  "common",
 ]
+
+[[package]]
+name = "day_15"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "common",
+]
