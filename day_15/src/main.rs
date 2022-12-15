@@ -84,19 +84,14 @@ fn find_sensor_coverage_at_row(y: i32, sensor: &Sensor, beacon: &Beacon) -> Opti
     Some((sensor.0 - diff, sensor.0 + diff))
 }
 
-fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
-    let beacons_at_row = reports
-        .iter()
-        .filter(|(_, beacon)| beacon.1 == y)
-        .map(|(_, b)| b);
-
+fn get_covered_ranges_at_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> Vec<(i32, i32)> {
     let mut coverages_at_y = reports
         .iter()
         .filter_map(|(sensor, beacon)| find_sensor_coverage_at_row(y, sensor, beacon))
         .collect::<Vec<_>>();
 
     if coverages_at_y.len() == 0 {
-        return 0;
+        return vec![];
     }
 
     coverages_at_y.sort_by_key(|r| r.0);
@@ -105,7 +100,7 @@ fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
     let mut coverage = coverages_at_y[0];
 
     for other in coverages_at_y[1..].iter() {
-        if coverage.1 >= other.0 {
+        if coverage.1 >= other.0 - 1 {
             // Ranges overlap
             coverage = (coverage.0, i32::max(coverage.1, other.1));
         } else {
@@ -114,6 +109,17 @@ fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
         }
     }
     merged_coverages.push(coverage);
+
+    merged_coverages
+}
+
+fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
+    let beacons_at_row = reports
+        .iter()
+        .filter(|(_, beacon)| beacon.1 == y)
+        .map(|(_, b)| b);
+
+    let merged_coverages = get_covered_ranges_at_row(y, reports);
 
     let covered_cells = merged_coverages
         .iter()
@@ -135,6 +141,21 @@ fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
     covered_cells - beacons_at_row
 }
 
+fn find_distress_beacons_signal(
+    range_start: i32,
+    range_end: i32,
+    reports: &Vec<(Sensor, Beacon)>,
+) -> Option<u64> {
+    for y in range_start..=range_end {
+        let ranges = get_covered_ranges_at_row(y, reports);
+        if ranges.len() == 2 {
+            return Some(4000000 * (ranges[0].1 as u64 + 1) + y as u64);
+        }
+    }
+
+    None
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
@@ -145,7 +166,10 @@ fn main() -> Result<(), anyhow::Error> {
         "Part 1 solution: {}",
         find_coverage_for_row(2000000, &reports)
     );
-    println!("Part 2 solution: {}", 0);
+    println!(
+        "Part 2 solution: {}",
+        find_distress_beacons_signal(0, 4000000, &reports).unwrap()
+    );
 
     Ok(())
 }
@@ -200,5 +224,13 @@ Sensor at x=20, y=1: closest beacon is at x=15, y=3";
         assert_eq!(coverage, 26);
         let coverage = find_coverage_for_row(11, &reports);
         assert_eq!(coverage, 27);
+    }
+
+    #[test]
+    fn test_find_distress_beacons_signal() {
+        let Problem { reports } = TEST_INPUT.parse().unwrap();
+        let signal = find_distress_beacons_signal(0, 20, &reports);
+
+        assert_eq!(signal, Some(56000011));
     }
 }
