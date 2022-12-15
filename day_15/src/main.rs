@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
@@ -6,7 +6,9 @@ use common::{get_arg, read_file_to_string};
 // TODO: collect empty ranges - spreading out from sensor position to +/-
 // closest beacon positions (in both coordinates). For part 1: find all these
 // which contain y=2000000 in their y range, "sum" extends of their x ranges
-// (note that they might not necessarily all overlap).
+// (note that they might not necessarily all overlap) and subtract beacons. Note
+// that number of cells a sensor covers will shrink by 2 for every 1 cell of
+// distance from inspected row
 
 #[derive(Debug, PartialEq, Eq)]
 struct Sensor(i32, i32);
@@ -62,11 +64,87 @@ impl FromStr for Problem {
     }
 }
 
+fn manhattan_distance(a_x: i32, a_y: i32, b_x: i32, b_y: i32) -> i32 {
+    let x_dist = (a_x - b_x).abs();
+    let y_dist = (a_y - b_y).abs();
+
+    x_dist + y_dist
+}
+
+fn find_sensor_coverage_at_row(y: i32, sensor: &Sensor, beacon: &Beacon) -> Option<(i32, i32)> {
+    let covered_distance = manhattan_distance(sensor.0, sensor.1, beacon.0, beacon.1);
+    let sensor_to_y_distance = manhattan_distance(sensor.0, sensor.1, sensor.0, y);
+
+    if sensor_to_y_distance > covered_distance {
+        return None;
+    }
+
+    let diff = covered_distance - sensor_to_y_distance;
+
+    Some((sensor.0 - diff, sensor.0 + diff))
+}
+
+fn find_coverage_for_row(y: i32, reports: &Vec<(Sensor, Beacon)>) -> u32 {
+    let beacons_at_row = reports
+        .iter()
+        .filter(|(_, beacon)| beacon.1 == y)
+        .map(|(_, b)| b);
+
+    let mut coverages_at_y = reports
+        .iter()
+        .filter_map(|(sensor, beacon)| find_sensor_coverage_at_row(y, sensor, beacon))
+        .collect::<Vec<_>>();
+
+    if coverages_at_y.len() == 0 {
+        return 0;
+    }
+
+    coverages_at_y.sort_by_key(|r| r.0);
+
+    let mut merged_coverages: Vec<(i32, i32)> = vec![];
+    let mut coverage = coverages_at_y[0];
+
+    for other in coverages_at_y[1..].iter() {
+        if coverage.1 >= other.0 {
+            // Ranges overlap
+            coverage = (coverage.0, i32::max(coverage.1, other.1));
+        } else {
+            merged_coverages.push(coverage);
+            coverage = *other;
+        }
+    }
+    merged_coverages.push(coverage);
+
+    let covered_cells = merged_coverages
+        .iter()
+        .fold(0, |acc, range| acc + (range.0 - range.1).abs()) as u32
+        + 1;
+
+    let beacons_at_row = beacons_at_row
+        .filter_map(|b| {
+            if merged_coverages.iter().any(|r| r.0 <= b.0 && b.0 <= r.1) {
+                Some(b.0)
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .count() as u32;
+
+    covered_cells - beacons_at_row
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
 
-    println!("Part 1 solution: {}", 0);
+    let Problem { reports } = input_string.parse()?;
+
+    println!(
+        "Part 1 solution: {}",
+        find_coverage_for_row(2000000, &reports)
+    );
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -99,5 +177,28 @@ Sensor at x=20, y=1: closest beacon is at x=15, y=3";
         assert_eq!(reports.len(), 14);
         assert_eq!(reports[0], (Sensor(2, 18), Beacon(-2, 15)));
         assert_eq!(reports[13], (Sensor(20, 1), Beacon(15, 3)));
+    }
+
+    #[test]
+    fn test_find_sensor_coverage_at_row() {
+        let s = Sensor(8, 7);
+        let b = Beacon(2, 10);
+        let y = 4;
+
+        let result = find_sensor_coverage_at_row(y, &s, &b);
+
+        assert_eq!(result, Some((2, 14)));
+    }
+
+    #[test]
+    fn test_find_coverage_for_row() {
+        let Problem { reports } = TEST_INPUT.parse().unwrap();
+
+        let coverage = find_coverage_for_row(9, &reports);
+        assert_eq!(coverage, 25);
+        let coverage = find_coverage_for_row(10, &reports);
+        assert_eq!(coverage, 26);
+        let coverage = find_coverage_for_row(11, &reports);
+        assert_eq!(coverage, 27);
     }
 }
