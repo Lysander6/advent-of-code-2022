@@ -26,7 +26,13 @@ impl FromStr for Problem {
         let mut adjacency_lists = vec![vec![]; node_count];
         let mut flow_rates = vec![0; node_count];
         // let shortest_paths = vec![vec![None; node_count]; node_count];
-        let mut next_free_idx: usize = 0;
+
+        let mut _next_free_idx: usize = 0;
+        let mut get_next_free_index = || {
+            let temp = _next_free_idx;
+            _next_free_idx += 1;
+            temp
+        };
 
         for line in s.lines() {
             let line = line.trim_start_matches("Valve ");
@@ -35,11 +41,9 @@ impl FromStr for Problem {
                 .ok_or_else(|| anyhow!("couldn't split on space: '{}'", line))?;
 
             let label = label.to_string();
-            let idx = *label_to_idx.entry(label).or_insert_with(|| {
-                let temp = next_free_idx;
-                next_free_idx += 1;
-                temp
-            });
+            let idx = *label_to_idx
+                .entry(label)
+                .or_insert_with(&mut get_next_free_index);
 
             let rest = rest.trim_start_matches("has flow rate=");
             let (flow_rate, rest) = rest
@@ -55,11 +59,9 @@ impl FromStr for Problem {
                 .split(", ")
                 .map(|other| {
                     let other_label = other.to_string();
-                    let other_idx = *label_to_idx.entry(other_label).or_insert_with(|| {
-                        let temp = next_free_idx;
-                        next_free_idx += 1;
-                        temp
-                    });
+                    let other_idx = *label_to_idx
+                        .entry(other_label)
+                        .or_insert_with(&mut get_next_free_index);
 
                     other_idx
                 })
@@ -80,6 +82,7 @@ impl FromStr for Problem {
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
+    let p: Problem = input_string.parse()?;
 
     println!("Part 1 solution: {}", 0);
     println!("Part 2 solution: {}", 0);
