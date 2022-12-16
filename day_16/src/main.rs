@@ -1,4 +1,7 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, VecDeque},
+    str::FromStr,
+};
 
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
@@ -18,8 +21,8 @@ impl FromStr for Problem {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Wasteful, but is executed once and simplifies determining sizes of
-        // adjacency lists, etc.
+        // Wasteful, but is executed once and simplifies creation of properly
+        // sized adjacency lists, etc.
         let node_count = s.lines().count();
 
         let mut label_to_idx = HashMap::with_capacity(node_count);
@@ -79,10 +82,32 @@ impl FromStr for Problem {
     }
 }
 
+fn compute_shortest_paths(adjacency_lists: &Vec<Vec<usize>>) -> Vec<Vec<Option<u32>>> {
+    let number_of_nodes = adjacency_lists.len();
+    let mut path_lengths = vec![vec![None; number_of_nodes]; number_of_nodes];
+
+    for source_node in 0..number_of_nodes {
+        let mut q = VecDeque::from([(source_node, 0u32)]);
+        while let Some((node, path_len)) = q.pop_front() {
+            path_lengths[source_node][node] = Some(path_len);
+
+            for &adjacent_node in &adjacency_lists[node] {
+                if path_lengths[source_node][adjacent_node] == None {
+                    q.push_back((adjacent_node, path_len + 1));
+                }
+            }
+        }
+    }
+
+    path_lengths
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let p: Problem = input_string.parse()?;
+
+    let path_lengths = compute_shortest_paths(&p.adjacency_lists);
 
     println!("Part 1 solution: {}", 0);
     println!("Part 2 solution: {}", 0);
@@ -132,5 +157,54 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
         assert_eq!(p.flow_rates[p.label_to_idx["BB"]], 13);
         assert_eq!(p.flow_rates[p.label_to_idx["HH"]], 22);
         assert_eq!(p.flow_rates[p.label_to_idx["JJ"]], 21);
+    }
+
+    #[test]
+    fn test_compute_shortest_paths() {
+        let p: Problem = TEST_INPUT.parse().unwrap();
+        let path_lengths = compute_shortest_paths(&p.adjacency_lists);
+
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["AA"]],
+            Some(0)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["DD"]],
+            Some(1)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["II"]],
+            Some(1)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["BB"]],
+            Some(1)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["JJ"]],
+            Some(2)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["EE"]],
+            Some(2)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["FF"]],
+            Some(3)
+        );
+        assert_eq!(
+            path_lengths[p.label_to_idx["AA"]][p.label_to_idx["GG"]],
+            Some(4)
+        );
+
+        assert_eq!(
+            path_lengths[p.label_to_idx["DD"]][p.label_to_idx["CC"]],
+            Some(1)
+        );
+
+        assert_eq!(
+            path_lengths[p.label_to_idx["FF"]][p.label_to_idx["HH"]],
+            Some(2)
+        );
     }
 }
