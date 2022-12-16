@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     str::FromStr,
 };
 
@@ -100,6 +100,59 @@ fn compute_shortest_paths(adjacency_lists: &Vec<Vec<usize>>) -> Vec<Vec<Option<u
     }
 
     path_lengths
+}
+
+fn find_optimal_moves(
+    shortest_paths: &Vec<Vec<Option<u32>>>,
+    flow_rates: &Vec<u32>,
+    start_node: usize,
+) -> u32 {
+    let number_of_nodes = shortest_paths.len();
+
+    let mut time_left = 30u32;
+    let mut unopened_valves: HashSet<usize> = HashSet::from_iter(0..number_of_nodes);
+    let mut current_node = start_node;
+
+    let mut pressure_released = 0u32;
+
+    while time_left > 0 {
+        let best_candidate = unopened_valves
+            .iter()
+            .filter_map(|&node| {
+                let flow_rate = flow_rates[node];
+                let Some(distance) = shortest_paths[current_node][node] else {
+                    return None;
+                };
+
+                // Compute pressure flow lost on every unopened valve for distance + 1 minutes
+                let flow_lost_on_every_other_unopened_valve =
+                    unopened_valves.iter().fold(0u32, |acc, &other_node| {
+                        if other_node == node {
+                            acc
+                        } else {
+                            acc + (distance + 1) * flow_rates[other_node]
+                        }
+                    });
+
+                // We really don't care if any of this goes below 0?
+                let flow_gained = time_left.saturating_sub(distance + 1) * flow_rate;
+                let score = flow_gained.saturating_sub(flow_lost_on_every_other_unopened_valve);
+
+                Some((score, node, flow_gained))
+            })
+            .max_by_key(|&(v, _, _)| v);
+
+        dbg!(best_candidate);
+
+        let (_, best_node, flow_gained) = best_candidate.unwrap();
+
+        pressure_released += flow_gained;
+        time_left = time_left.saturating_sub(shortest_paths[current_node][best_node].unwrap());
+        unopened_valves.remove(&best_node);
+        current_node = best_node;
+    }
+
+    pressure_released
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -206,5 +259,17 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
             path_lengths[p.label_to_idx["FF"]][p.label_to_idx["HH"]],
             Some(2)
         );
+    }
+
+    #[test]
+    fn test_find_optimal_moves() {
+        let p: Problem = TEST_INPUT.parse().unwrap();
+        let path_lengths = compute_shortest_paths(&p.adjacency_lists);
+
+        dbg!(&p.label_to_idx);
+
+        let pressure_released = find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+
+        assert_eq!(pressure_released, 1651);
     }
 }
