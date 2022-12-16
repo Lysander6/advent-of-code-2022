@@ -147,7 +147,7 @@ fn find_optimal_moves(
         let (_, best_node, flow_gained) = best_candidate.unwrap();
 
         pressure_released += flow_gained;
-        time_left = time_left.saturating_sub(shortest_paths[current_node][best_node].unwrap());
+        time_left = time_left.saturating_sub(shortest_paths[current_node][best_node].unwrap() + 1);
         unopened_valves.remove(&best_node);
         current_node = best_node;
     }
