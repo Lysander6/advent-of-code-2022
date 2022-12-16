@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
+use itertools::Itertools;
 
 // TODO: Priority queue scored by time_left * flow_rate - distance_to_valve - 1
 // (time to turn valve)
@@ -102,6 +103,45 @@ fn compute_shortest_paths(adjacency_lists: &Vec<Vec<usize>>) -> Vec<Vec<Option<u
     path_lengths
 }
 
+fn bruteforce(
+    shortest_paths: &Vec<Vec<Option<u32>>>,
+    flow_rates: &Vec<u32>,
+    start_node: usize,
+) -> u32 {
+    let number_of_nodes = shortest_paths.len();
+    let unopened_valves: HashSet<usize> =
+        HashSet::from_iter((0..number_of_nodes).filter(|&node| flow_rates[node] > 0));
+
+    let mut max_pressure_released = 0u32;
+
+    unopened_valves
+        .iter()
+        .permutations(unopened_valves.len())
+        .for_each(|valves| {
+            let mut time_left = 30u32;
+            let mut current_node = start_node;
+            let mut pressure_released = 0u32;
+
+            for &node in valves {
+                if time_left == 0 {
+                    break;
+                }
+
+                let t = shortest_paths[current_node][node].unwrap() + 1;
+                pressure_released += time_left.saturating_sub(t) * flow_rates[node];
+                time_left = time_left.saturating_sub(t);
+                current_node = node;
+            }
+
+            if pressure_released > max_pressure_released {
+                max_pressure_released = pressure_released;
+                println!("new best: {}", max_pressure_released);
+            }
+        });
+
+    max_pressure_released
+}
+
 fn find_optimal_moves(
     shortest_paths: &Vec<Vec<Option<u32>>>,
     flow_rates: &Vec<u32>,
@@ -167,7 +207,10 @@ fn main() -> Result<(), anyhow::Error> {
 
     let path_lengths = compute_shortest_paths(&p.adjacency_lists);
 
-    println!("Part 1 solution: {}", 0);
+    println!(
+        "Part 1 solution: {}",
+        bruteforce(&path_lengths, &p.flow_rates, p.label_to_idx["AA"])
+    );
     println!("Part 2 solution: {}", 0);
 
     Ok(())
