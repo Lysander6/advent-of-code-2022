@@ -6,6 +6,7 @@ use std::{
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
 use itertools::Itertools;
+use rand::Rng;
 
 // TODO: Priority queue scored by time_left * flow_rate - distance_to_valve - 1
 // (time to turn valve)
@@ -148,6 +149,7 @@ fn find_optimal_moves(
     start_node: usize,
 ) -> u32 {
     let number_of_nodes = shortest_paths.len();
+    let mut rng = rand::thread_rng();
 
     let mut time_left = 30u32;
     let mut unopened_valves: HashSet<usize> =
@@ -171,7 +173,9 @@ fn find_optimal_moves(
                         if other_node == node {
                             acc
                         } else {
-                            acc + (distance + 1) * flow_rates[other_node]
+                            acc + ((distance + 1 + shortest_paths[node][other_node].unwrap() + 1)
+                                / rng.gen_range(1..=30))
+                                * flow_rates[other_node]
                         }
                     });
 
@@ -182,8 +186,6 @@ fn find_optimal_moves(
                 Some((score, node, flow_gained))
             })
             .max_by_key(|&(v, _, _)| v);
-
-        dbg!(best_candidate);
 
         if best_candidate.is_none() {
             return pressure_released;
@@ -207,10 +209,17 @@ fn main() -> Result<(), anyhow::Error> {
 
     let path_lengths = compute_shortest_paths(&p.adjacency_lists);
 
-    println!(
-        "Part 1 solution: {}",
-        bruteforce(&path_lengths, &p.flow_rates, p.label_to_idx["AA"])
-    );
+    let mut best = 0;
+
+    // Run a couple of times
+    for _ in 0..10000 {
+        let result = find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+        if result > best {
+            best = result;
+        }
+    }
+
+    println!("Part 1 solution: {}", best);
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -314,11 +323,17 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
         let p: Problem = TEST_INPUT.parse().unwrap();
         let path_lengths = compute_shortest_paths(&p.adjacency_lists);
 
-        dbg!(&p.label_to_idx);
+        let mut best = 0;
 
-        let pressure_released =
-            find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+        for _ in 0..5000 {
+            let pressure_released =
+                find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
 
-        assert_eq!(pressure_released, 1651);
+            if pressure_released > best {
+                best = pressure_released;
+            }
+        }
+
+        assert_eq!(best, 1651);
     }
 }
