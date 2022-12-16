@@ -110,7 +110,8 @@ fn find_optimal_moves(
     let number_of_nodes = shortest_paths.len();
 
     let mut time_left = 30u32;
-    let mut unopened_valves: HashSet<usize> = HashSet::from_iter(0..number_of_nodes);
+    let mut unopened_valves: HashSet<usize> =
+        HashSet::from_iter((0..number_of_nodes).filter(|&node| flow_rates[node] > 0));
     let mut current_node = start_node;
 
     let mut pressure_released = 0u32;
@@ -143,6 +144,10 @@ fn find_optimal_moves(
             .max_by_key(|&(v, _, _)| v);
 
         dbg!(best_candidate);
+
+        if best_candidate.is_none() {
+            return pressure_released;
+        }
 
         let (_, best_node, flow_gained) = best_candidate.unwrap();
 
@@ -268,7 +273,8 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
 
         dbg!(&p.label_to_idx);
 
-        let pressure_released = find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+        let pressure_released =
+            find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
 
         assert_eq!(pressure_released, 1651);
     }
