@@ -6,7 +6,8 @@ use std::{
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
 use itertools::Itertools;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
+use rayon::prelude::*;
 
 // TODO: Priority queue scored by time_left * flow_rate - distance_to_valve - 1
 // (time to turn valve)
@@ -147,13 +148,13 @@ fn find_optimal_moves(
     shortest_paths: &Vec<Vec<Option<u32>>>,
     flow_rates: &Vec<u32>,
     start_node: usize,
+    valves: &HashSet<usize>,
+    time_left: u32,
 ) -> u32 {
-    let number_of_nodes = shortest_paths.len();
     let mut rng = rand::thread_rng();
 
-    let mut time_left = 30u32;
-    let mut unopened_valves: HashSet<usize> =
-        HashSet::from_iter((0..number_of_nodes).filter(|&node| flow_rates[node] > 0));
+    let mut time_left = time_left;
+    let mut unopened_valves: HashSet<usize> = valves.clone();
     let mut current_node = start_node;
 
     let mut pressure_released = 0u32;
@@ -174,7 +175,7 @@ fn find_optimal_moves(
                             acc
                         } else {
                             acc + ((distance + 1 + shortest_paths[node][other_node].unwrap() + 1)
-                                / rng.gen_range(1..=30))
+                                   / rng.gen_range(1..=30)) // 1..=30 for part 1, 1..=3 for part 2 ¯\_(ツ)_/¯
                                 * flow_rates[other_node]
                         }
                     });
@@ -202,25 +203,93 @@ fn find_optimal_moves(
     pressure_released
 }
 
+fn part_2(
+    shortest_paths: &Vec<Vec<Option<u32>>>,
+    flow_rates: &Vec<u32>,
+    label_to_idx: &HashMap<String, usize>,
+) -> u32 {
+    let mut rng = rand::thread_rng();
+    let mut valves = (0..shortest_paths.len())
+        .filter(|&node| flow_rates[node] > 0)
+        .collect::<Vec<_>>();
+
+    valves.shuffle(&mut rng);
+
+    let mut best = 0;
+
+    for s in 1..valves.len() {
+        let valves = valves.clone();
+        let (left, right) = valves.split_at(s);
+
+        for _ in 0..100 {
+            let pressure_released_1 = find_optimal_moves(
+                &shortest_paths,
+                &flow_rates,
+                label_to_idx["AA"],
+                &HashSet::from_iter(left.iter().cloned()),
+                26,
+            );
+            let pressure_released_2 = find_optimal_moves(
+                &shortest_paths,
+                &flow_rates,
+                label_to_idx["AA"],
+                &HashSet::from_iter(right.iter().cloned()),
+                26,
+            );
+
+            let pressure_released = pressure_released_1 + pressure_released_2;
+
+            if pressure_released > best {
+                best = pressure_released;
+            }
+        }
+    }
+
+    best
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let p: Problem = input_string.parse()?;
 
     let path_lengths = compute_shortest_paths(&p.adjacency_lists);
+    let valves = HashSet::from_iter((0..path_lengths.len()).filter(|&node| p.flow_rates[node] > 0));
 
     let mut best = 0;
 
     // Run a couple of times
     for _ in 0..10000 {
-        let result = find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+        let result = find_optimal_moves(
+            &path_lengths,
+            &p.flow_rates,
+            p.label_to_idx["AA"],
+            &valves,
+            30,
+        );
         if result > best {
             best = result;
         }
     }
 
     println!("Part 1 solution: {}", best);
-    println!("Part 2 solution: {}", 0);
+
+    for i in 0..1 {
+        let r = (0..100)
+            .into_par_iter()
+            .map(|_| part_2(&path_lengths, &p.flow_rates, &p.label_to_idx))
+            .max();
+
+        let r = r.unwrap();
+        if r > best {
+            best = r;
+            println!("new best: {}", best);
+        }
+
+        println!("done {} iterations", i * 1000);
+    }
+
+    println!("Part 2 solution: {}", best);
 
     Ok(())
 }
@@ -322,12 +391,19 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
     fn test_find_optimal_moves() {
         let p: Problem = TEST_INPUT.parse().unwrap();
         let path_lengths = compute_shortest_paths(&p.adjacency_lists);
+        let valves =
+            HashSet::from_iter((0..path_lengths.len()).filter(|&node| p.flow_rates[node] > 0));
 
         let mut best = 0;
 
         for _ in 0..5000 {
-            let pressure_released =
-                find_optimal_moves(&path_lengths, &p.flow_rates, p.label_to_idx["AA"]);
+            let pressure_released = find_optimal_moves(
+                &path_lengths,
+                &p.flow_rates,
+                p.label_to_idx["AA"],
+                &valves,
+                30,
+            );
 
             if pressure_released > best {
                 best = pressure_released;
@@ -335,5 +411,45 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
         }
 
         assert_eq!(best, 1651);
+    }
+
+    #[test]
+    fn test_find_optimal_moves_2() {
+        let p: Problem = TEST_INPUT.parse().unwrap();
+        let path_lengths = compute_shortest_paths(&p.adjacency_lists);
+        let valves: HashSet<usize> =
+            HashSet::from_iter((0..path_lengths.len()).filter(|&node| p.flow_rates[node] > 0));
+
+        let mut best = 0;
+
+        for s in 1..(valves.len() - 1) {
+            let valves = valves.clone().into_iter().collect::<Vec<_>>();
+            let (left, right) = valves.split_at(s);
+
+            for _ in 0..10000 {
+                let pressure_released_1 = find_optimal_moves(
+                    &path_lengths,
+                    &p.flow_rates,
+                    p.label_to_idx["AA"],
+                    &HashSet::from_iter(left.iter().cloned()),
+                    26,
+                );
+                let pressure_released_2 = find_optimal_moves(
+                    &path_lengths,
+                    &p.flow_rates,
+                    p.label_to_idx["AA"],
+                    &HashSet::from_iter(right.iter().cloned()),
+                    26,
+                );
+
+                let pressure_released = pressure_released_1 + pressure_released_2;
+
+                if pressure_released > best {
+                    best = pressure_released;
+                }
+            }
+        }
+
+        assert_eq!(best, 1707);
     }
 }
