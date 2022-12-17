@@ -41,7 +41,7 @@ fn print_board(columns: &Vec<Vec<bool>>) {
     println!("+");
 }
 
-fn simulate_tetris(instructions: &str, rocks_to_drop: usize) -> (usize, Vec<Vec<bool>>) {
+fn simulate_tetris(instructions: &str, rocks_to_drop: usize, cycle_start: usize, cycle_len: usize) -> (usize, Vec<Vec<bool>>) {
     let mut columns = vec![vec![false; 3]; 7];
     let mut top_of_highest_block = 0usize;
     let mut instructions = instructions.chars().cycle();
@@ -49,8 +49,8 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize) -> (usize, Vec<Vec<
     let mut rocks_dropped_out_of_cycle = 0usize;
     let mut rocks_dropped_in_cycle = 0usize;
     let mut height_from_cycle = 0usize;
-    let cycle_start = 25;
-    let cycle_len = 53;
+    // let cycle_start = 25;
+    // let cycle_len = 53;
 
     for (shape_height, rock_parts) in get_shapes().iter().cycle() {
         for c in 0..columns.len() {
@@ -226,9 +226,9 @@ fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let instructions = input_string.trim();
-    let (height, columns) = simulate_tetris(&instructions, 2022);
+    let (height, columns) = simulate_tetris(&instructions, 1000000000000, 495, 2634);
 
-    println!("Part 1 solution: {}", height);
+    println!("Part 2 solution: {}", height);
 
     // let (height, columns) = simulate_tetris(&instructions, 20022);
     // let cycle = detect_cycle(&columns);
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_simulate_tetris_1() {
-        let (height, _columns) = simulate_tetris(TEST_INPUT, 2022);
+        let (height, _columns) = simulate_tetris(TEST_INPUT, 2022, 25, 53);
 
         // print_board(&columns);
 
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_simulate_tetris_2() {
-        let (height, _columns) = simulate_tetris(TEST_INPUT, 1000000000000);
+        let (height, _columns) = simulate_tetris(TEST_INPUT, 1000000000000, 25, 53);
 
         // print_board(&columns);
 
