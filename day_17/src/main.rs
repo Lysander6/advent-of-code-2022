@@ -149,10 +149,10 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize, cycle_start: usize,
 
                     eprintln!("cycles_remaining: {}", cycles_remaining);
 
-                    height_from_cycle = (cycles_remaining - 2) * (cycle_len);
+                    height_from_cycle = (cycles_remaining - 1) * cycle_len;
                     eprintln!("cycle_len: {}", cycle_len);
 
-                    rocks_dropped_in_cycle *= cycles_remaining - 1;
+                    rocks_dropped_in_cycle *= cycles_remaining;
                     println!(
                         "rocks left to throw: {}",
                         rocks_to_drop - rocks_dropped_in_cycle - (rocks_dropped_out_of_cycle + 1)
