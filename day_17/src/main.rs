@@ -136,6 +136,7 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize, cycle_start: usize,
 
                     // We are one stone past cycle end
                     rocks_dropped_in_cycle -= 1;
+                    rocks_dropped_out_of_cycle += 1;
 
                     eprintln!(
                         "rocks_dropped_out_of_cycle: {}, rocks_dropped_in_cycle: {}",
@@ -144,7 +145,7 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize, cycle_start: usize,
 
                     let cycles_remaining =
                         (rocks_to_drop - rocks_dropped_in_cycle - (rocks_dropped_out_of_cycle + 1))
-                            / (rocks_dropped_in_cycle);
+                            / rocks_dropped_in_cycle;
 
                     eprintln!("cycles_remaining: {}", cycles_remaining);
 
@@ -168,12 +169,11 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize, cycle_start: usize,
             }
         }
 
-        // We've got some rogue rock, so we stop one short from target
-        if rocks_dropped_out_of_cycle + rocks_dropped_in_cycle >= rocks_to_drop - 1 {
-            // assert_eq!(
-            //     rocks_dropped_out_of_cycle + rocks_dropped_in_cycle,
-            //     rocks_to_drop
-            // );
+        if rocks_dropped_out_of_cycle + rocks_dropped_in_cycle >= rocks_to_drop {
+            assert_eq!(
+                rocks_dropped_out_of_cycle + rocks_dropped_in_cycle,
+                rocks_to_drop
+            );
             break;
         }
     }
