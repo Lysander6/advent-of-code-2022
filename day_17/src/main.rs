@@ -81,7 +81,7 @@ fn get_shapes() -> Vec<(usize, Vec<(usize, usize)>)> {
 
 fn print_board(columns: &Vec<Vec<bool>>) {
     for row in (0..columns[0].len()).rev() {
-        print!("|");
+        print!("{row:6} |");
         for col in 0..columns.len() {
             if columns[col][row] {
                 print!("#");
@@ -91,7 +91,7 @@ fn print_board(columns: &Vec<Vec<bool>>) {
         }
         println!("|");
     }
-    print!("+");
+    print!("       +");
     for _ in 0..columns.len() {
         print!("-");
     }
