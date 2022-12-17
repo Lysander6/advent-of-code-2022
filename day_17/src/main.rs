@@ -200,12 +200,51 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize) -> (usize, Vec<Vec<
     (top_of_highest_block, columns)
 }
 
+fn detect_cycle(columns: &Vec<Vec<bool>>) -> Option<(usize, usize)> {
+    let cols = columns.len();
+    let rows = columns[0].len();
+    let mut i = 0;
+    let mut j = 1;
+
+    while j < rows {
+        if (0..cols).all(|idx| columns[idx][i] == columns[idx][j]) {
+            let mut cycle_start = i;
+            let cycle_len = j - i;
+
+            // Rewind
+            while (0..cols)
+                .all(|idx| columns[idx][cycle_start] == columns[idx][cycle_start + cycle_len])
+            {
+                cycle_start -= 1;
+            }
+            cycle_start += 1;
+
+            // Verify
+            if (cycle_start..=(cycle_start + 2 * cycle_len))
+                .all(|n| (0..cols).all(|idx| columns[idx][n] == columns[idx][n + cycle_len]))
+            {
+                return Some((cycle_start, cycle_len));
+            }
+        }
+
+        i += 1;
+        j += 2;
+    }
+
+    None
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
-    let (height, columns) = simulate_tetris(&input_string.trim(), 2022);
+    let instructions = input_string.trim();
+    let (height, columns) = simulate_tetris(&instructions, 2022);
 
     println!("Part 1 solution: {}", height);
+
+    let (height, columns) = simulate_tetris(&instructions, 20022);
+    let cycle = detect_cycle(&columns);
+    eprintln!("cycle: {:?}", cycle);
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -218,11 +257,27 @@ mod tests {
     const TEST_INPUT: &str = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
 
     #[test]
-    fn test_simulate_tetris() {
+    fn test_simulate_tetris_1() {
         let (height, columns) = simulate_tetris(TEST_INPUT, 2022);
 
         // print_board(&columns);
 
         assert_eq!(height, 3068);
+    }
+
+    #[test]
+    fn test_simulate_tetris_2() {
+        let (height, columns) = simulate_tetris(TEST_INPUT, 2022);
+
+        // print_board(&columns);
+        let cycle = detect_cycle(&columns);
+        eprintln!("cycle: {:?}", cycle);
+
+        eprintln!(
+            "eq?: {}",
+            (0..7).all(|n| columns[n][25] == columns[n][25 + 53])
+        );
+
+        assert_eq!(height, 1514285714288);
     }
 }
