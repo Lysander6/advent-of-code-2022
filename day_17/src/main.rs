@@ -105,15 +105,14 @@ fn simulate_tetris(instructions: &str, rocks_to_drop: usize) -> (usize, Vec<Vec<
     // let mut instruction_ptr = 0usize;
 
     for (shape_height, rock_parts) in get_shapes().iter().cycle().take(rocks_to_drop) {
+        for c in 0..columns.len() {
+            columns[c].resize(top_of_highest_block + 3 + shape_height, false);
+        }
+
         let mut rock_parts = rock_parts
             .into_iter()
             .map(|&(col, row)| (col, row + top_of_highest_block + 3))
             .collect::<Vec<_>>();
-
-        for c in 0..columns.len() {
-            let len = columns[c].len();
-            columns[c].resize(len + shape_height, false);
-        }
 
         // eprintln!("The rock begins falling: {:?}", rock_parts);
 
