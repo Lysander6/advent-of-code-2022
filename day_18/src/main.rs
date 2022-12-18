@@ -3,7 +3,7 @@ use std::{collections::VecDeque, str::FromStr};
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
 
-// construct 23x23x23 Boolean vec and add cubes one by one, checking if it has
+// Construct a Boolean grid and add cubes one by one, checking if it has
 // neighbors (in canonical directions) - any neighbor means -2 from visible
 // sides count (one from covered side of inserted cube and one from neighboring
 // cube, whose side was covered)
