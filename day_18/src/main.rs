@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::VecDeque, str::FromStr};
 
 use anyhow::{anyhow, Context};
 use common::{get_arg, read_file_to_string};
@@ -26,12 +26,24 @@ fn get_neighbor_indices(coords: &[u8; 3]) -> [[u8; 3]; 6] {
     ]
 }
 
-fn get_surface_area(boxes: &Vec<[u8; 3]>) -> usize {
+fn get_neighbor_indices_usize(coords: &[usize; 3]) -> [[usize; 3]; 6] {
+    let &[x, y, z] = coords;
+
+    [
+        [x + 1, y, z],
+        [x - 1, y, z],
+        [x, y + 1, z],
+        [x, y - 1, z],
+        [x, y, z + 1],
+        [x, y, z - 1],
+    ]
+}
+
+fn get_surface_area(boxes: &Vec<[u8; 3]>) -> (usize, Vec<Vec<Vec<bool>>>) {
     let mut surface_area = 0i64;
-    let mut grid = vec![vec![vec![false; 24]; 24]; 24];
+    let mut grid = vec![vec![vec![false; 25]; 25]; 25];
 
     for b in boxes {
-        println!("box: {:?}", b);
         let &[x, y, z] = b;
         grid[x as usize][y as usize][z as usize] = true;
 
@@ -43,7 +55,34 @@ fn get_surface_area(boxes: &Vec<[u8; 3]>) -> usize {
         surface_area += 6 - neighbors * 2;
     }
 
-    surface_area as usize
+    (surface_area as usize, grid)
+}
+
+fn flood_count(grid: &Vec<Vec<Vec<bool>>>) -> usize {
+    let mut scheduled = vec![vec![vec![false; grid[0][0].len()]; grid[0].len()]; grid.len()];
+    let mut hits = 0usize;
+
+    let mut q = VecDeque::from([[1usize, 1, 1]]);
+    scheduled[1][1][1] = true;
+    while let Some(node) = q.pop_front() {
+        for adjacent_node in get_neighbor_indices_usize(&node) {
+            let [nx, ny, nz] = adjacent_node;
+            if 0 < nx && 0 < ny && 0 < nz && nx < 25 && ny < 25 && nz < 25 {
+                if grid[nx][ny][nz] {
+                    hits += 1;
+                    scheduled[nx][ny][nz] = true;
+                    continue;
+                }
+
+                if !scheduled[nx][ny][nz] {
+                    scheduled[nx][ny][nz] = true;
+                    q.push_back(adjacent_node);
+                }
+            }
+        }
+    }
+
+    hits
 }
 
 impl FromStr for Problem {
@@ -55,9 +94,9 @@ impl FromStr for Problem {
             .map(|line| {
                 let a = line
                     .split(',')
-                    // Shift coordinates by 1, so we don't need to mind if we
-                    // are looking for neighbors of box at 0-th index
-                    .map(|n| n.parse::<u8>().and_then(|n| Ok(n + 1)))
+                    // Shift coordinates, so we don't need to mind if we are
+                    // looking for neighbors of box originally at 0-th index.
+                    .map(|n| n.parse::<u8>().and_then(|n| Ok(n + 2)))
                     .collect::<Result<Vec<_>, _>>()
                     .with_context(|| format!("parsing '{}'", line))?
                     .try_into()
@@ -75,9 +114,10 @@ fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let Problem { boxes } = input_string.parse()?;
+    let (surface_area, grid) = get_surface_area(&boxes);
 
-    println!("Part 1 solution: {}", get_surface_area(&boxes));
-    println!("Part 2 solution: {}", 0);
+    println!("Part 1 solution: {}", surface_area);
+    println!("Part 2 solution: {}", flood_count(&grid));
 
     Ok(())
 }
@@ -106,8 +146,8 @@ mod tests {
         let Problem { boxes } = TEST_INPUT.parse().unwrap();
 
         assert_eq!(boxes.len(), 13);
-        assert_eq!(boxes[0], [3, 3, 3]);
-        assert_eq!(boxes[12], [3, 4, 6]);
+        assert_eq!(boxes[0], [4, 4, 4]);
+        assert_eq!(boxes[12], [4, 5, 7]);
         // assert_eq!(boxes[0], [2, 2, 2]);
         // assert_eq!(boxes[12], [2, 3, 5]);
     }
@@ -116,13 +156,29 @@ mod tests {
     fn test_get_surface_area_1() {
         let boxes = vec![[1, 1, 1], [2, 1, 1]];
 
-        assert_eq!(get_surface_area(&boxes), 10);
+        assert_eq!(get_surface_area(&boxes).0, 10);
     }
 
     #[test]
     fn test_get_surface_area_2() {
         let Problem { boxes } = TEST_INPUT.parse().unwrap();
 
-        assert_eq!(get_surface_area(&boxes), 64);
+        assert_eq!(get_surface_area(&boxes).0, 64);
+    }
+
+    #[test]
+    fn test_flood_count_1() {
+        let boxes = vec![[2, 2, 2], [3, 2, 2]];
+        let (_, grid) = get_surface_area(&boxes);
+
+        assert_eq!(flood_count(&grid), 10);
+    }
+
+    #[test]
+    fn test_flood_count_2() {
+        let Problem { boxes } = TEST_INPUT.parse().unwrap();
+        let (_, grid) = get_surface_area(&boxes);
+
+        assert_eq!(flood_count(&grid), 58);
     }
 }
