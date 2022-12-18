@@ -8,68 +8,11 @@ use common::{get_arg, read_file_to_string};
 // sides count (one from covered side of inserted cube and one from neighboring
 // cube, whose side was covered)
 
+const GRID: usize = 25;
+
 #[derive(Debug)]
 struct Problem {
     boxes: Vec<[usize; 3]>,
-}
-
-fn get_neighbor_indices(coords: &[usize; 3]) -> [[usize; 3]; 6] {
-    let &[x, y, z] = coords;
-
-    [
-        [x + 1, y, z],
-        [x - 1, y, z],
-        [x, y + 1, z],
-        [x, y - 1, z],
-        [x, y, z + 1],
-        [x, y, z - 1],
-    ]
-}
-
-fn get_surface_area(boxes: &Vec<[usize; 3]>) -> (usize, Vec<Vec<Vec<bool>>>) {
-    let mut surface_area = 0i64;
-    let mut grid = vec![vec![vec![false; 25]; 25]; 25];
-
-    for b in boxes {
-        let &[x, y, z] = b;
-        grid[x as usize][y as usize][z as usize] = true;
-
-        let neighbors = get_neighbor_indices(b)
-            .into_iter()
-            .filter(|&[nx, ny, nz]| grid[nx as usize][ny as usize][nz as usize])
-            .count() as i64;
-
-        surface_area += 6 - neighbors * 2;
-    }
-
-    (surface_area as usize, grid)
-}
-
-fn flood_count(grid: &Vec<Vec<Vec<bool>>>) -> usize {
-    let mut scheduled = vec![vec![vec![false; grid[0][0].len()]; grid[0].len()]; grid.len()];
-    let mut hits = 0usize;
-
-    let mut q = VecDeque::from([[1usize, 1, 1]]);
-    scheduled[1][1][1] = true;
-    while let Some(node) = q.pop_front() {
-        for adjacent_node in get_neighbor_indices(&node) {
-            let [nx, ny, nz] = adjacent_node;
-            if 0 < nx && 0 < ny && 0 < nz && nx < 25 && ny < 25 && nz < 25 {
-                if grid[nx][ny][nz] {
-                    hits += 1;
-                    scheduled[nx][ny][nz] = true;
-                    continue;
-                }
-
-                if !scheduled[nx][ny][nz] {
-                    scheduled[nx][ny][nz] = true;
-                    q.push_back(adjacent_node);
-                }
-            }
-        }
-    }
-
-    hits
 }
 
 impl FromStr for Problem {
@@ -95,6 +38,65 @@ impl FromStr for Problem {
 
         Ok(Problem { boxes })
     }
+}
+
+fn get_neighbor_indices(coords: &[usize; 3]) -> [[usize; 3]; 6] {
+    let &[x, y, z] = coords;
+
+    [
+        [x + 1, y, z],
+        [x - 1, y, z],
+        [x, y + 1, z],
+        [x, y - 1, z],
+        [x, y, z + 1],
+        [x, y, z - 1],
+    ]
+}
+
+fn get_surface_area(boxes: &Vec<[usize; 3]>) -> (usize, Vec<Vec<Vec<bool>>>) {
+    let mut surface_area = 0i64;
+    let mut grid = vec![vec![vec![false; GRID]; GRID]; GRID];
+
+    for b in boxes {
+        let &[x, y, z] = b;
+        grid[x][y][z] = true;
+
+        let neighbors = get_neighbor_indices(b)
+            .into_iter()
+            .filter(|&[nx, ny, nz]| grid[nx][ny][nz])
+            .count() as i64;
+
+        surface_area += 6 - neighbors * 2;
+    }
+
+    (surface_area as usize, grid)
+}
+
+fn flood_count(grid: &Vec<Vec<Vec<bool>>>) -> usize {
+    let mut scheduled = vec![vec![vec![false; grid[0][0].len()]; grid[0].len()]; grid.len()];
+    let mut hits = 0;
+
+    let mut q = VecDeque::from([[1, 1, 1]]);
+    scheduled[1][1][1] = true;
+    while let Some(node) = q.pop_front() {
+        for adjacent_node in get_neighbor_indices(&node) {
+            let [nx, ny, nz] = adjacent_node;
+            if 0 < nx && 0 < ny && 0 < nz && nx < GRID && ny < GRID && nz < GRID {
+                if grid[nx][ny][nz] {
+                    hits += 1;
+                    scheduled[nx][ny][nz] = true;
+                    continue;
+                }
+
+                if !scheduled[nx][ny][nz] {
+                    scheduled[nx][ny][nz] = true;
+                    q.push_back(adjacent_node);
+                }
+            }
+        }
+    }
+
+    hits
 }
 
 fn main() -> Result<(), anyhow::Error> {
