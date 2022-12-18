@@ -6,14 +6,14 @@ use common::{get_arg, read_file_to_string};
 // construct 23x23x23 Boolean vec and add cubes one by one, checking if it has
 // neighbors (in canonical directions) - any neighbor means -2 from visible
 // sides count (one from covered side of inserted cube and one from neighboring
-// cube, of which side was covered)
+// cube, whose side was covered)
 
 #[derive(Debug)]
 struct Problem {
-    boxes: Vec<[u8; 3]>,
+    boxes: Vec<[usize; 3]>,
 }
 
-fn get_neighbor_indices(coords: &[u8; 3]) -> [[u8; 3]; 6] {
+fn get_neighbor_indices(coords: &[usize; 3]) -> [[usize; 3]; 6] {
     let &[x, y, z] = coords;
 
     [
@@ -26,20 +26,7 @@ fn get_neighbor_indices(coords: &[u8; 3]) -> [[u8; 3]; 6] {
     ]
 }
 
-fn get_neighbor_indices_usize(coords: &[usize; 3]) -> [[usize; 3]; 6] {
-    let &[x, y, z] = coords;
-
-    [
-        [x + 1, y, z],
-        [x - 1, y, z],
-        [x, y + 1, z],
-        [x, y - 1, z],
-        [x, y, z + 1],
-        [x, y, z - 1],
-    ]
-}
-
-fn get_surface_area(boxes: &Vec<[u8; 3]>) -> (usize, Vec<Vec<Vec<bool>>>) {
+fn get_surface_area(boxes: &Vec<[usize; 3]>) -> (usize, Vec<Vec<Vec<bool>>>) {
     let mut surface_area = 0i64;
     let mut grid = vec![vec![vec![false; 25]; 25]; 25];
 
@@ -65,7 +52,7 @@ fn flood_count(grid: &Vec<Vec<Vec<bool>>>) -> usize {
     let mut q = VecDeque::from([[1usize, 1, 1]]);
     scheduled[1][1][1] = true;
     while let Some(node) = q.pop_front() {
-        for adjacent_node in get_neighbor_indices_usize(&node) {
+        for adjacent_node in get_neighbor_indices(&node) {
             let [nx, ny, nz] = adjacent_node;
             if 0 < nx && 0 < ny && 0 < nz && nx < 25 && ny < 25 && nz < 25 {
                 if grid[nx][ny][nz] {
@@ -96,13 +83,13 @@ impl FromStr for Problem {
                     .split(',')
                     // Shift coordinates, so we don't need to mind if we are
                     // looking for neighbors of box originally at 0-th index.
-                    .map(|n| n.parse::<u8>().and_then(|n| Ok(n + 2)))
+                    .map(|n| n.parse::<usize>().and_then(|n| Ok(n + 2)))
                     .collect::<Result<Vec<_>, _>>()
                     .with_context(|| format!("parsing '{}'", line))?
                     .try_into()
                     .map_err(|_v| anyhow!("couldn't split '{}' into expected three parts", line))?;
 
-                Ok::<[u8; 3], Self::Err>(a)
+                Ok::<[usize; 3], Self::Err>(a)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
