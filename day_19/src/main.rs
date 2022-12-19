@@ -12,7 +12,7 @@ enum Action {
     BuyGeodeRobot,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Simulation {
     ore_robots_count: u64,
     clay_robots_count: u64,
@@ -38,6 +38,43 @@ impl Default for Simulation {
             obsidian_count: Default::default(),
             geode_count: Default::default(),
         }
+    }
+}
+
+impl Simulation {
+    fn tick(&self, blueprint: &Blueprint, action: &Action) -> Self {
+        use Action::*;
+
+        let mut simulation = self.clone();
+
+        simulation.ore_count += simulation.ore_robots_count;
+        simulation.clay_count += simulation.clay_robots_count;
+        simulation.obsidian_count += simulation.obsidian_robots_count;
+        simulation.geode_count += simulation.geode_robots_count;
+
+        match action {
+            Noop => {}
+            BuyOreRobot => {
+                simulation.ore_count -= blueprint.ore_robot_cost.0;
+                simulation.ore_robots_count += 1;
+            }
+            BuyClayRobot => {
+                simulation.ore_count -= blueprint.clay_robot_cost.0;
+                simulation.clay_robots_count += 1;
+            }
+            BuyObsidianRobot => {
+                simulation.ore_count -= blueprint.obsidian_robot_cost.0 .0;
+                simulation.clay_count -= blueprint.obsidian_robot_cost.1 .0;
+                simulation.obsidian_robots_count += 1;
+            }
+            BuyGeodeRobot => {
+                simulation.ore_count -= blueprint.geode_robot_cost.0 .0;
+                simulation.obsidian_count -= blueprint.geode_robot_cost.1 .0;
+                simulation.geode_robots_count += 1;
+            }
+        };
+
+        simulation
     }
 }
 
@@ -171,11 +208,38 @@ fn get_available_actions(blueprint: &Blueprint, simulation: &Simulation) -> Vec<
     available_actions
 }
 
+fn run_simulation(blueprint: &Blueprint, simulation: &Simulation, time_left: u8) -> u64 {
+    if time_left == 0 {
+        return simulation.geode_count;
+    }
+
+    let mut max_geodes = 0;
+
+    for action in get_available_actions(&blueprint, &simulation) {
+        let simulation = simulation.tick(&blueprint, &action);
+        let geodes = run_simulation(&blueprint, &simulation, time_left - 1);
+
+        if geodes > max_geodes {
+            max_geodes = geodes;
+        }
+    }
+
+    max_geodes
+}
+
+const TEST_INPUT: &str = "\
+Blueprint 1: Each ore robot costs 4 ore. Each clay robot costs 2 ore. Each obsidian robot costs 3 ore and 14 clay. Each geode robot costs 2 ore and 7 obsidian.
+Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian.";
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
+    let blueprints = parse_blueprints(&TEST_INPUT)?;
 
-    println!("Part 1 solution: {}", 0);
+    println!(
+        "Part 1 solution: {}",
+        run_simulation(&blueprints[1], &Simulation::default(), 24)
+    );
     println!("Part 2 solution: {}", 0);
 
     Ok(())
