@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 common = { path = "../common" }
+rand = { workspace = true }
+rayon = { workspace = true }

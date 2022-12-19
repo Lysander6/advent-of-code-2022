@@ -1,3 +1,5 @@
+use rand::prelude::*;
+use rayon::prelude::*;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -76,6 +78,39 @@ impl Simulation {
 
         simulation
     }
+
+    fn tick_mut(&mut self, blueprint: &Blueprint, action: &Action) -> &mut Self {
+        use Action::*;
+
+        self.ore_count += self.ore_robots_count;
+        self.clay_count += self.clay_robots_count;
+        self.obsidian_count += self.obsidian_robots_count;
+        self.geode_count += self.geode_robots_count;
+
+        match action {
+            Noop => {}
+            BuyOreRobot => {
+                self.ore_count -= blueprint.ore_robot_cost.0;
+                self.ore_robots_count += 1;
+            }
+            BuyClayRobot => {
+                self.ore_count -= blueprint.clay_robot_cost.0;
+                self.clay_robots_count += 1;
+            }
+            BuyObsidianRobot => {
+                self.ore_count -= blueprint.obsidian_robot_cost.0 .0;
+                self.clay_count -= blueprint.obsidian_robot_cost.1 .0;
+                self.obsidian_robots_count += 1;
+            }
+            BuyGeodeRobot => {
+                self.ore_count -= blueprint.geode_robot_cost.0 .0;
+                self.obsidian_count -= blueprint.geode_robot_cost.1 .0;
+                self.geode_robots_count += 1;
+            }
+        };
+
+        self
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -89,7 +124,7 @@ struct Obsidian(u64);
 
 #[derive(Debug)]
 struct Blueprint {
-    id: usize,
+    id: u64,
     ore_robot_cost: Ore,
     clay_robot_cost: Ore,
     obsidian_robot_cost: (Ore, Clay),
@@ -227,19 +262,58 @@ fn run_simulation(blueprint: &Blueprint, simulation: &Simulation, time_left: u8)
     max_geodes
 }
 
-const TEST_INPUT: &str = "\
-Blueprint 1: Each ore robot costs 4 ore. Each clay robot costs 2 ore. Each obsidian robot costs 3 ore and 14 clay. Each geode robot costs 2 ore and 7 obsidian.
-Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian.";
+fn run_randomized_simulation(blueprint: &Blueprint, time_left: u8) -> u64 {
+    use Action::*;
+    let mut rng = rand::thread_rng();
+    let mut simulation = Simulation::default();
+
+    for _ in 0..time_left {
+        let actions = get_available_actions(&blueprint, &simulation);
+        let action = actions
+            .choose_weighted(&mut rng, |action| match action {
+                // Bias toward buying
+                Noop => 1,
+                BuyOreRobot => 2,
+                BuyClayRobot => 3,
+                BuyObsidianRobot => 4,
+                BuyGeodeRobot => 5,
+            })
+            .unwrap();
+        simulation.tick_mut(&blueprint, &action);
+    }
+
+    simulation.geode_count
+}
+
+fn get_blueprint_quality_level(blueprint: &Blueprint) -> u64 {
+    let mut max_goedes = 0;
+
+    for _ in 0..1_000_000 {
+        let geodes = run_randomized_simulation(&blueprint, 24);
+        if geodes > max_goedes {
+            max_goedes = geodes;
+        }
+    }
+
+    blueprint.id * max_goedes
+}
+
+fn part_1(blueprints: &Vec<Blueprint>) -> u64 {
+    blueprints
+        .par_iter()
+        .map(|blueprint| {
+            println!("Starting blueprint id: {}", blueprint.id);
+            get_blueprint_quality_level(blueprint)
+        })
+        .sum()
+}
 
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
-    let blueprints = parse_blueprints(&TEST_INPUT)?;
+    let blueprints = parse_blueprints(&input_string)?;
 
-    println!(
-        "Part 1 solution: {}",
-        run_simulation(&blueprints[1], &Simulation::default(), 24)
-    );
+    println!("Part 1 solution: {}", part_1(&blueprints));
     println!("Part 2 solution: {}", 0);
 
     Ok(())
@@ -275,4 +349,12 @@ Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsid
 
         assert_eq!(actions, vec![Action::Noop]);
     }
+
+    // #[test]
+    // fn test_get_blueprint_quality_level() {
+    //     let blueprints = parse_blueprints(TEST_INPUT).unwrap();
+
+    //     assert_eq!(get_blueprint_quality_level(&blueprints[0]), 9);
+    //     assert_eq!(get_blueprint_quality_level(&blueprints[1]), 24);
+    // }
 }
