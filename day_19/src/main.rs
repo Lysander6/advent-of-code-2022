@@ -298,6 +298,19 @@ fn get_blueprint_quality_level(blueprint: &Blueprint) -> u64 {
     blueprint.id * max_goedes
 }
 
+fn get_blueprint_max_geodes(blueprint: &Blueprint, time_left: u8) -> u64 {
+    let mut max_goedes = 0;
+
+    for _ in 0..10_000_000 {
+        let geodes = run_randomized_simulation(&blueprint, time_left);
+        if geodes > max_goedes {
+            max_goedes = geodes;
+        }
+    }
+
+    max_goedes
+}
+
 fn part_1(blueprints: &Vec<Blueprint>) -> u64 {
     blueprints
         .par_iter()
@@ -308,13 +321,26 @@ fn part_1(blueprints: &Vec<Blueprint>) -> u64 {
         .sum()
 }
 
+fn part_2(blueprints: &Vec<Blueprint>) -> u64 {
+    blueprints
+        .par_iter()
+        .map(|blueprint| {
+            println!("Starting blueprint id: {}", blueprint.id);
+            get_blueprint_max_geodes(&blueprint, 32)
+        })
+        .product()
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let blueprints = parse_blueprints(&input_string)?;
 
     println!("Part 1 solution: {}", part_1(&blueprints));
-    println!("Part 2 solution: {}", 0);
+    println!(
+        "Part 2 solution: {}",
+        part_2(&blueprints.into_iter().take(3).collect::<Vec<_>>())
+    );
 
     Ok(())
 }
