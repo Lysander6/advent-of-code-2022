@@ -1,8 +1,12 @@
+#[macro_use]
+extern crate lazy_static;
+
 use rand::prelude::*;
 use rayon::prelude::*;
+use regex::Regex;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context};
+use anyhow::{ensure, Context};
 use common::{get_arg, read_file_to_string};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,7 +25,6 @@ struct Simulation {
     obsidian_robots_count: u64,
     geode_robots_count: u64,
 
-    // TODO: These should also be kept as `Ore`, `Clay`, etc. for type-safety
     ore_count: u64,
     clay_count: u64,
     obsidian_count: u64,
@@ -44,6 +47,7 @@ impl Default for Simulation {
 }
 
 impl Simulation {
+    /*
     fn tick(&self, blueprint: &Blueprint, action: &Action) -> Self {
         use Action::*;
 
@@ -57,27 +61,28 @@ impl Simulation {
         match action {
             Noop => {}
             BuyOreRobot => {
-                simulation.ore_count -= blueprint.ore_robot_cost.0;
+                simulation.ore_count -= blueprint.ore_robot_cost;
                 simulation.ore_robots_count += 1;
             }
             BuyClayRobot => {
-                simulation.ore_count -= blueprint.clay_robot_cost.0;
+                simulation.ore_count -= blueprint.clay_robot_cost;
                 simulation.clay_robots_count += 1;
             }
             BuyObsidianRobot => {
-                simulation.ore_count -= blueprint.obsidian_robot_cost.0 .0;
-                simulation.clay_count -= blueprint.obsidian_robot_cost.1 .0;
+                simulation.ore_count -= blueprint.obsidian_robot_cost.0;
+                simulation.clay_count -= blueprint.obsidian_robot_cost.1;
                 simulation.obsidian_robots_count += 1;
             }
             BuyGeodeRobot => {
-                simulation.ore_count -= blueprint.geode_robot_cost.0 .0;
-                simulation.obsidian_count -= blueprint.geode_robot_cost.1 .0;
+                simulation.ore_count -= blueprint.geode_robot_cost.0;
+                simulation.obsidian_count -= blueprint.geode_robot_cost.1;
                 simulation.geode_robots_count += 1;
             }
         };
 
         simulation
     }
+    */
 
     fn tick_mut(&mut self, blueprint: &Blueprint, action: &Action) -> &mut Self {
         use Action::*;
@@ -90,21 +95,21 @@ impl Simulation {
         match action {
             Noop => {}
             BuyOreRobot => {
-                self.ore_count -= blueprint.ore_robot_cost.0;
+                self.ore_count -= blueprint.ore_robot_cost;
                 self.ore_robots_count += 1;
             }
             BuyClayRobot => {
-                self.ore_count -= blueprint.clay_robot_cost.0;
+                self.ore_count -= blueprint.clay_robot_cost;
                 self.clay_robots_count += 1;
             }
             BuyObsidianRobot => {
-                self.ore_count -= blueprint.obsidian_robot_cost.0 .0;
-                self.clay_count -= blueprint.obsidian_robot_cost.1 .0;
+                self.ore_count -= blueprint.obsidian_robot_cost.0;
+                self.clay_count -= blueprint.obsidian_robot_cost.1;
                 self.obsidian_robots_count += 1;
             }
             BuyGeodeRobot => {
-                self.ore_count -= blueprint.geode_robot_cost.0 .0;
-                self.obsidian_count -= blueprint.geode_robot_cost.1 .0;
+                self.ore_count -= blueprint.geode_robot_cost.0;
+                self.obsidian_count -= blueprint.geode_robot_cost.1;
                 self.geode_robots_count += 1;
             }
         };
@@ -113,79 +118,40 @@ impl Simulation {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Ore(u64);
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Clay(u64);
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Obsidian(u64);
-
 #[derive(Debug)]
 struct Blueprint {
     id: u64,
-    ore_robot_cost: Ore,
-    clay_robot_cost: Ore,
-    obsidian_robot_cost: (Ore, Clay),
-    geode_robot_cost: (Ore, Obsidian),
+    ore_robot_cost: u64,
+    clay_robot_cost: u64,
+    obsidian_robot_cost: (u64, u64),
+    geode_robot_cost: (u64, u64),
 }
 
 impl FromStr for Blueprint {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim_start_matches("Blueprint ");
-        let (id, rest) = s
-            .split_once(':')
-            .ok_or_else(|| anyhow!("Couldn't split at ':': '{}'", s))?;
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"Blueprint (\d+): Each ore robot costs (\d+) ore. Each clay robot costs (\d+) ore. Each obsidian robot costs (\d+) ore and (\d+) clay. Each geode robot costs (\d+) ore and (\d+) obsidian.").unwrap();
+        }
 
-        let id = id
+        let caps = RE
+            .captures(s)
+            .with_context(|| format!("Matching '{}'", s))?;
+
+        ensure!(caps.len() == 1 + 7, "Did not get expected 7 matches");
+
+        let id = caps[1]
             .parse()
-            .with_context(|| format!("Parsing id from '{}'", s))?;
+            .with_context(|| format!("Parsing id from '{}'", &caps[1]))?;
 
-        let rest = rest.trim_start_matches(" Each ore robot costs ");
-        let (ore_robot_cost, rest) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let ore_robot_cost = Ore(ore_robot_cost.parse()?);
-
-        let rest = rest.trim_start_matches("ore. Each clay robot costs ");
-        let (clay_robot_cost, rest) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let clay_robot_cost = Ore(clay_robot_cost.parse()?);
-
-        let rest = rest.trim_start_matches("ore. Each obsidian robot costs ");
-        let (obsidian_robot_cost_ore, rest) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let obsidian_robot_cost_ore = Ore(obsidian_robot_cost_ore.parse()?);
-
-        let rest = rest.trim_start_matches("ore and ");
-        let (obsidian_robot_cost_clay, rest) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let obsidian_robot_cost_clay = Clay(obsidian_robot_cost_clay.parse()?);
+        let ore_robot_cost = caps[2].parse()?;
+        let clay_robot_cost = caps[3].parse()?;
+        let obsidian_robot_cost_ore = caps[4].parse()?;
+        let obsidian_robot_cost_clay = caps[5].parse()?;
         let obsidian_robot_cost = (obsidian_robot_cost_ore, obsidian_robot_cost_clay);
-
-        let rest = rest.trim_start_matches("clay. Each geode robot costs ");
-        let (geode_robot_cost_ore, rest) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let geode_robot_cost_ore = Ore(geode_robot_cost_ore.parse()?);
-
-        let rest = rest.trim_start_matches("ore and ");
-        let (geode_robot_cost_obsidian, _) = rest
-            .split_once(' ')
-            .ok_or_else(|| anyhow!("Couldn't split at ' ': '{}'", rest))?;
-
-        let geode_robot_cost_obsidian = Obsidian(geode_robot_cost_obsidian.parse()?);
+        let geode_robot_cost_ore = caps[6].parse()?;
+        let geode_robot_cost_obsidian = caps[7].parse()?;
         let geode_robot_cost = (geode_robot_cost_ore, geode_robot_cost_obsidian);
 
         Ok(Blueprint {
@@ -207,11 +173,11 @@ fn get_available_actions(blueprint: &Blueprint, simulation: &Simulation) -> Vec<
 
     let mut available_actions = vec![Noop];
 
-    let Blueprint {
-        ref ore_robot_cost,
-        ref clay_robot_cost,
-        ref obsidian_robot_cost,
-        ref geode_robot_cost,
+    let &Blueprint {
+        ore_robot_cost,
+        clay_robot_cost,
+        obsidian_robot_cost,
+        geode_robot_cost,
         ..
     } = blueprint;
 
@@ -222,27 +188,28 @@ fn get_available_actions(blueprint: &Blueprint, simulation: &Simulation) -> Vec<
         ..
     } = *simulation;
 
-    if ore_count >= ore_robot_cost.0 {
+    if ore_count >= ore_robot_cost {
         available_actions.push(BuyOreRobot);
     }
 
-    if ore_count >= clay_robot_cost.0 {
+    if ore_count >= clay_robot_cost {
         available_actions.push(BuyClayRobot);
     }
 
     let (obsidian_robot_cost_ore, obsidian_robot_cost_clay) = obsidian_robot_cost;
-    if ore_count >= obsidian_robot_cost_ore.0 && clay_count >= obsidian_robot_cost_clay.0 {
+    if ore_count >= obsidian_robot_cost_ore && clay_count >= obsidian_robot_cost_clay {
         available_actions.push(BuyObsidianRobot);
     }
 
     let (geode_robot_cost_ore, geode_robot_cost_obsidian) = geode_robot_cost;
-    if ore_count >= geode_robot_cost_ore.0 && obsidian_count >= geode_robot_cost_obsidian.0 {
+    if ore_count >= geode_robot_cost_ore && obsidian_count >= geode_robot_cost_obsidian {
         available_actions.push(BuyGeodeRobot);
     }
 
     available_actions
 }
 
+/*
 fn run_simulation(blueprint: &Blueprint, simulation: &Simulation, time_left: u8) -> u64 {
     if time_left == 0 {
         return simulation.geode_count;
@@ -261,6 +228,7 @@ fn run_simulation(blueprint: &Blueprint, simulation: &Simulation, time_left: u8)
 
     max_geodes
 }
+*/
 
 fn run_randomized_simulation(blueprint: &Blueprint, time_left: u8) -> u64 {
     use Action::*;
@@ -358,14 +326,14 @@ Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsid
         let blueprints = parse_blueprints(TEST_INPUT).unwrap();
 
         assert_eq!(blueprints.len(), 2);
-        assert_eq!(blueprints[0].ore_robot_cost, Ore(4));
-        assert_eq!(blueprints[0].clay_robot_cost, Ore(2));
-        assert_eq!(blueprints[0].obsidian_robot_cost, (Ore(3), Clay(14)));
-        assert_eq!(blueprints[0].geode_robot_cost, (Ore(2), Obsidian(7)));
-        assert_eq!(blueprints[1].ore_robot_cost, Ore(2));
-        assert_eq!(blueprints[1].clay_robot_cost, Ore(3));
-        assert_eq!(blueprints[1].obsidian_robot_cost, (Ore(3), Clay(8)));
-        assert_eq!(blueprints[1].geode_robot_cost, (Ore(3), Obsidian(12)));
+        assert_eq!(blueprints[0].ore_robot_cost, 4);
+        assert_eq!(blueprints[0].clay_robot_cost, 2);
+        assert_eq!(blueprints[0].obsidian_robot_cost, (3, 14));
+        assert_eq!(blueprints[0].geode_robot_cost, (2, 7));
+        assert_eq!(blueprints[1].ore_robot_cost, 2);
+        assert_eq!(blueprints[1].clay_robot_cost, 3);
+        assert_eq!(blueprints[1].obsidian_robot_cost, (3, 8));
+        assert_eq!(blueprints[1].geode_robot_cost, (3, 12));
     }
 
     #[test]

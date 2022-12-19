@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 common = { path = "../common" }
+lazy_static = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
+regex = { workspace = true }
