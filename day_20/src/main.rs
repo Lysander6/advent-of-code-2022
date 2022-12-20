@@ -54,19 +54,21 @@ fn find_grove_coords(ns: &Vec<i64>) -> Option<(i64, i64, i64)> {
     ))
 }
 
-fn main() -> Result<(), anyhow::Error> {
-    let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
-    let input_string = read_file_to_string(&input_file_path)?;
-    let ns = parse_input(&input_string)?;
+fn part_1(ns: &Vec<i64>) -> Result<i64, anyhow::Error> {
     let mixed = mix_numbers(&ns);
     let grove_coords = find_grove_coords(&mixed)
         .ok_or_else(|| anyhow!("Couldn't find grove coordinates from '{:?}'", mixed))?;
 
-    println!(
-        "Part 1 solution: {}",
-        grove_coords.0 + grove_coords.1 + grove_coords.2
-    );
+    Ok(grove_coords.0 + grove_coords.1 + grove_coords.2)
+}
+
+fn main() -> Result<(), anyhow::Error> {
+    let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
+    let input_string = read_file_to_string(&input_file_path)?;
+    let ns = parse_input(&input_string)?;
+
     println!("Part 2 solution: {}", 0);
+    println!("Part 1 solution: {}", part_1(&ns)?);
 
     Ok(())
 }
@@ -110,5 +112,12 @@ mod tests {
         let result = find_grove_coords(&ns);
 
         assert_eq!(result, Some((4, -3, 2)));
+    }
+
+    #[test]
+    fn test_part_1() {
+        let ns = parse_input(&TEST_INPUT).unwrap();
+
+        assert_eq!(part_1(&ns).unwrap(), 3);
     }
 }
