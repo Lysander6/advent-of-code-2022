@@ -62,13 +62,26 @@ fn part_1(ns: &Vec<i64>) -> Result<i64, anyhow::Error> {
     Ok(grove_coords.0 + grove_coords.1 + grove_coords.2)
 }
 
+fn part_2(ns: &Vec<i64>) -> Result<i64, anyhow::Error> {
+    let decryption_key = 811589153;
+    let ns = ns.into_iter().map(|n| n * decryption_key).collect::<Vec<_>>();
+
+    // TODO
+    let mixed = ns;
+
+    let grove_coords = find_grove_coords(&mixed)
+        .ok_or_else(|| anyhow!("Couldn't find grove coordinates from '{:?}'", mixed))?;
+
+    Ok(grove_coords.0 + grove_coords.1 + grove_coords.2)
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let input_file_path = get_arg(1).context("pass path to input file as first argument")?;
     let input_string = read_file_to_string(&input_file_path)?;
     let ns = parse_input(&input_string)?;
 
-    println!("Part 2 solution: {}", 0);
     println!("Part 1 solution: {}", part_1(&ns)?);
+    println!("Part 2 solution: {}", part_2(&ns)?);
 
     Ok(())
 }
@@ -120,4 +133,11 @@ mod tests {
 
         assert_eq!(part_1(&ns).unwrap(), 3);
     }
+
+    // #[test]
+    // fn test_part_2() {
+    //     let ns = parse_input(&TEST_INPUT).unwrap();
+
+    //     assert_eq!(part_2(&ns).unwrap(), 1623178306);
+    // }
 }
