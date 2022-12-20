@@ -59,7 +59,7 @@ fn main() -> Result<(), anyhow::Error> {
     let input_string = read_file_to_string(&input_file_path)?;
     let ns = parse_input(&input_string)?;
     let mixed = mix_numbers(&ns);
-    let grove_coords = find_grove_coords(&ns)
+    let grove_coords = find_grove_coords(&mixed)
         .ok_or_else(|| anyhow!("Couldn't find grove coordinates from '{:?}'", mixed))?;
 
     println!(
